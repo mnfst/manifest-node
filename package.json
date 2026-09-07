@@ -21,7 +21,8 @@
   "files": [
     "dist",
     "README.md",
-    "CONTRACT.md"
+    "CONTRACT.md",
+    "docs"
   ],
   "engines": {
     "node": ">=22"

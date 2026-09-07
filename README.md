@@ -1,110 +1,90 @@
-# Manifest Node SDK
+# Manifest for Node.js
 
-Repair eligible failed JSON API requests made with Node's built-in `fetch`. Supports JavaScript and TypeScript, ESM and CommonJS, on Node 22 and later.
+[![CI](https://github.com/mnfst/manifest-node/actions/workflows/ci.yml/badge.svg?branch=feat/manifest-node-sdk)](https://github.com/mnfst/manifest-node/actions/workflows/ci.yml)
 
-```ts
-import { manifest } from '@mnfst/node';
-
-manifest({ key: process.env.MNFST_KEY });
-
-const response = await fetch('https://api.example.com/orders', {
-  method: 'POST',
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ limit: 500 }),
-});
-```
-
-When the API rejects the request, Manifest can return a repair such as `{ limit: 100 }`. The SDK retries once under your original credentials and reports what happened. It returns the upstream response to your application.
-
-## Install from source
-
-The package name is **@mnfst/node**, and the repository is **manifest-node**. This package has not been published to npm. After the SDK PR is merged:
-
-```sh
-npm install git+https://github.com/mnfst/manifest-node.git
-```
-
-Git installation builds the package through `prepare`; private repository access requires GitHub credentials. The published artifact contains no runtime dependencies.
-
-CommonJS:
+Repair failed JSON API requests automatically. Works with Node's built-in `fetch`, for everyday APIs and LLMs alike.
 
 ```js
-const { manifest, flush } = require('@mnfst/node');
-manifest(); // reads MNFST_KEY
+import { manifest } from '@mnfst/node';
+
+manifest();
+// Keep making your API calls as usual.
 ```
 
-There is no `autofix()` or `init()` compatibility alias. `mnfst` and `@mnfst/sdk` already identify other npm packages; do not install them for this SDK.
+Your API rejects a request → Manifest finds a repair → the SDK retries once, locally.
 
-## Configuration
+## Setup
 
-Call `manifest()` once at startup, before other libraries save a reference to `fetch`.
+### 1. Install
 
-| Option | Environment | Default |
-| --- | --- | --- |
-| `key` | `MNFST_KEY` | Disabled with a warning if missing |
-| `url` | `MNFST_URL` | `https://api.manifest.build` |
-| `onHeal` | — | Optional local callback |
-
-Explicit options take precedence. Reconfiguration requires a restart. ESM and CommonJS imports share one process-wide installation.
-
-```ts
-manifest({
-  url: 'http://127.0.0.1:5310',
-  onHeal(event) {
-    console.log(event.healStatus, event.replayStatusCode);
-  },
-});
-```
-
-`onHeal` receives `url`, `statusCode`, `healStatus`, `replayStatusCode`, `healMs` and optional `operations`. URLs have known credential query fields masked. Callback errors do not fail application requests.
-
-## Supported traffic
-
-- Built-in global `fetch`, including `Request` inputs and libraries that call global fetch after installation.
-- Failures after automatic redirects pass through: the original method/body may not describe the failing hop.
-- Captures HTTP 400, 404 and 422. Other statuses and network failures before an HTTP response pass through.
-- Generic JSON APIs, including LLM APIs. No provider-specific request format is required.
-- One retry per capture. Same-origin URL and header repairs are supported by the SDK; the current app returns JSON body repairs.
-- Successful calls and successful retries remain streamed. Failed responses retain their bytes, status, headers, URL and redirect metadata.
-
-**Not covered:** browser JavaScript, `node:http`/`node:https`, the default Axios HTTP adapter, directly imported `undici.fetch`/`node-fetch`, and fetch references saved before initialization. Those transports need separate integration. This SDK does not claim to intercept every Node HTTP client.
-
-## Limits and failure behavior
-
-- Request capture is bounded to 256 KiB and JSON depth 64. It tees the upload alongside the original call, reading for at most one second. Oversized or slow uploads travel as `null` and are not retried.
-- Error capture reads at most 64 KiB plus one transport chunk, within one second. The prefix and remaining stream are preserved for the caller. Incomplete errors are reported without retry. One unusually large transport chunk can exceed that memory estimate.
-- The Manifest heal call has a 60-second deadline and at most eight concurrent requests. Capacity exhaustion and service errors return the original API error response.
-- Caller abort signals apply during healing and retry; cancellation remains observable to the caller.
-- A transport failure on retry returns the original error response and reports inconclusive evidence. If the retry returns another HTTP error, its raw body is reported so the app can distinguish recurrence from a new issue.
-- Automatic retries can repeat side effects. Use APIs with safe retry semantics and caller-managed idempotency keys; these headers are preserved unless explicitly changed by a repair.
-- A disabled project's HTTP 403 response suppresses healing for five minutes.
-
-Outcome reports are best effort, limited to 64 concurrent requests with five-second deadlines. Failures and drops emit Node warnings with code `MNFST`. Before a short-lived process exits, flush reports explicitly:
-
-```ts
-import { flush } from '@mnfst/node';
-await flush({ timeoutMs: 5000 });
-```
-
-`flush` waits within one total deadline; it does not uninstall the SDK or guarantee delivery. Abrupt termination can lose reports.
-
-## Data sent to Manifest
-
-Failed URLs, request headers, JSON bodies and raw error responses go to the configured server. Known credential names in query parameters and headers are masked; credential-named top-level request body fields are withheld and restored on retry. Exception prose is not sent for transport failures.
-
-This is not general secret detection: nested fields, arbitrary secret names, business data and response bodies may contain sensitive information. Enable it only for traffic you permit Manifest to process and store. The SDK makes the actual retry locally.
-
-## Development
+Requires **Node.js 22+**. This preview is not published to npm yet; install the SDK branch with GitHub access:
 
 ```sh
-npm ci
-npm run typecheck
-npm test
-npm pack
-# Optional: creates a synthetic customer/project in a disposable app.
-MNFST_TEST_APP_URL=http://127.0.0.1:5310 npm run test:live
+npm install 'git+https://github.com/mnfst/manifest-node.git#feat/manifest-node-sdk'
 ```
 
-CI runs Node 22, 24 and 26, checks both declaration formats, and installs the packed artifact. The live app test runs locally because cross-repository CI access to the private app is not configured.
+The Git install builds the package automatically. JavaScript, TypeScript, ESM and CommonJS are supported; there are no runtime dependencies.
 
-Deploy the outcome contract in [app PR #3](https://github.com/mnfst/app/pull/3) before using this SDK. See [CONTRACT.md](CONTRACT.md) for the shared Python/Node wire protocol.
+### 2. Connect your project
+
+Create a project in your Manifest dashboard and copy the project key shown during setup. In **Project Settings**, turn **Autofix** on to enable repairs.
+
+```sh
+export MNFST_KEY='your-project-key'
+```
+
+The SDK defaults to `https://api.manifest.build`. For a local app running on port 5310, also set:
+
+```sh
+export MNFST_URL='http://127.0.0.1:5310'
+```
+
+Your server must support the [SDK API contract](CONTRACT.md). The local app must already be running.
+
+### 3. Initialize before your requests
+
+Call `manifest()` once at startup, before other libraries save a reference to `fetch`. Save this as `example.mjs`, replacing the example endpoint and payload with your own:
+
+```js
+import { manifest, flush } from '@mnfst/node';
+
+manifest({
+  onHeal(event) {
+    console.log('[manifest]', event.healStatus, event.replayStatusCode);
+  },
+});
+
+try {
+  const response = await fetch('https://api.example.com/orders', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ limit: 500 }),
+  });
+  console.log(response.status, await response.text());
+} finally {
+  await flush({ timeoutMs: 5000 });
+}
+```
+
+Run it with `node example.mjs`. For an API that rejects `limit: 500` and has a matching repair, Manifest can retry with a valid limit. Repairs depend on the API error and available patches.
+
+CommonJS uses `const { manifest, flush } = require('@mnfst/node')`.
+
+## Check that it works
+
+Send a JSON request that your test API rejects with **400, 404 or 422**. Check the failure in your project's dashboard and the `onHeal` callback for the repair result. A successful request alone does not contact Manifest. `flush()` lets a short script wait for outcome reports before exiting.
+
+## What to expect
+
+- **One retry.** Manifest returns a repair; the SDK sends the corrected request directly to your API.
+- **Original error if healing is unavailable.** A heal call can add up to 60 seconds. If a retry returns an HTTP response, that response reaches your application.
+- **Built-in fetch.** Browser JavaScript, default Axios, `node:http` and separately imported fetch implementations are not intercepted.
+- **Retry semantics still matter.** Use idempotency keys where needed; a repeated request can repeat side effects.
+
+## Privacy
+
+Manifest receives failed request URLs, headers, JSON bodies and error responses. Known credential fields are masked or withheld, but nested secrets, prompts and business data can still be sent. Enable it only for traffic you permit your Manifest server to process and store.
+
+## More
+
+[Configuration, limits & development](docs/guide.md) · [API contract](CONTRACT.md) · [Python SDK](https://github.com/mnfst/manifest-python)
