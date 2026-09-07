@@ -166,3 +166,26 @@ test('caller cancellation during healing rejects rather than returning a stale e
   });
   await assert.rejects(runtime.fetch('http://provider', { signal: controller.signal }), /cancel during heal/);
 });
+
+test('upstream latency excludes time spent finishing SDK body capture', async t => {
+  let clock = 0;
+  t.mock.method(performance, 'now', () => clock);
+  let finish: (() => void) | undefined;
+  const stream = new ReadableStream({ start(controller) {
+    finish = () => { controller.enqueue(new TextEncoder().encode('{"limit":500}')); controller.close(); };
+  } });
+  let elapsed = -1;
+  const raw: typeof fetch = async (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.includes('/v1/heal')) {
+      elapsed = JSON.parse(String(init!.body)).responseTimeMs;
+      return Response.json({ status: 'no_patch' });
+    }
+    setTimeout(() => { clock = 200; finish!(); }, 1);
+    void (input as Request).body?.cancel().catch(() => {});
+    return new Response('bad', { status: 400 });
+  };
+  const runtime = new Runtime({ key: 'k', url: 'http://manifest/' }, raw);
+  const response = await runtime.fetch('http://provider', { method: 'POST', body: stream, duplex: 'half' } as RequestInit);
+  await response.body?.cancel(); assert.equal(elapsed, 0);
+});

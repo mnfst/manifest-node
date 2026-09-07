@@ -20,8 +20,9 @@ export class Runtime {
     const bodyPromise = captureRequest(request).catch(() => ({ body: null, complete: false }));
     const started = performance.now();
     const response = await this.original(request, extras);
+    const responseTimeMs = performance.now() - started;
     if (!eligible.has(response.status) || response.redirected || !this.api.enabled()) return response;
-    return this.repair(request, extras, response, await bodyPromise, performance.now() - started);
+    return this.repair(request, extras, response, await bodyPromise, responseTimeMs);
   };
   private async repair(request: Request, extras: RequestInit, original: Response,
     body: { body: unknown; complete: boolean }, responseTimeMs: number): Promise<Response> {
