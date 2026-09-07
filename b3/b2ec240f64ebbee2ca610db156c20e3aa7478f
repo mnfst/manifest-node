@@ -1,0 +1,23 @@
+package.json
+  s_fbb6d00cb77615::t_31060b2e65c04e 24-25
+README.md
+  s_fbb6d00cb77615::t_935be876902d58 1,3,5,7-8,10-11,14-16,18,20,23,26,28,30-33,36-40,42,44,46,48-49,53,57-67,69,71,73,75,77,79-82,84,86,88,90
+docs/guide.md
+  s_fbb6d00cb77615::t_e2bcffef017a0a 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b3b2ec240f64ebbee2ca610db156c20e3aa7478f",
+  "prompts": {},
+  "sessions": {
+    "s_fbb6d00cb77615": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a079ce-0d8d-7fc0-84a4-44d3981e3fc2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
