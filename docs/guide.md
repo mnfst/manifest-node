@@ -49,7 +49,7 @@ manifest({
 Outcome reports are best effort, limited to 64 concurrent requests with five-second deadlines. Failures and drops emit Node warnings with code `MNFST`. Before a short-lived process exits, flush reports explicitly:
 
 ```ts
-import { flush } from '@mnfst/node';
+import { flush } from 'manifest';
 await flush({ timeoutMs: 5000 });
 ```
 

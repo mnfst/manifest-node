@@ -1,7 +1,7 @@
 import { captureResponse } from './capture.js';
 import { boundedJson, isObject } from './wire.js';
 import type { Capture, Fetch, HealResult, Outcome } from './types.js';
-export const VERSION = '0.1.0';
+export const VERSION = '6.0.0';
 export const warn = (message: string) => process.emitWarning(message, { code: 'MNFST' });
 export class HealApi {
   private disabledUntil = 0;

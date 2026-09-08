@@ -5,7 +5,7 @@
 Repair failed JSON API requests automatically. Works with Node's built-in `fetch`, for everyday APIs and LLMs alike.
 
 ```js
-import { manifest } from '@mnfst/node';
+import { manifest } from 'manifest';
 
 manifest();
 // Keep making your API calls as usual.
@@ -17,13 +17,13 @@ Your API rejects a request → Manifest finds a repair → the SDK retries once,
 
 ### 1. Install
 
-Requires **Node.js 22+**. This preview is not published to npm yet; install from GitHub with repository access:
+Requires **Node.js 22+**:
 
 ```sh
-npm install 'git+https://github.com/mnfst/manifest-node.git'
+npm install manifest
 ```
 
-The Git install builds the package automatically. JavaScript, TypeScript, ESM and CommonJS are supported; there are no runtime dependencies.
+JavaScript, TypeScript, ESM and CommonJS are supported; there are no runtime dependencies.
 
 ### 2. Connect your project
 
@@ -46,7 +46,7 @@ Your server must support the [SDK API contract](CONTRACT.md). The local app must
 Call `manifest()` once at startup, before other libraries save a reference to `fetch`. Save this as `example.mjs`, replacing the example endpoint and payload with your own:
 
 ```js
-import { manifest, flush } from '@mnfst/node';
+import { manifest, flush } from 'manifest';
 
 manifest({
   onHeal(event) {
@@ -68,7 +68,7 @@ try {
 
 Run it with `node example.mjs`. For an API that rejects `limit: 500` and has a matching repair, Manifest can retry with a valid limit. Repairs depend on the API error and available patches.
 
-CommonJS uses `const { manifest, flush } = require('@mnfst/node')`.
+CommonJS uses `const { manifest, flush } = require('manifest')`.
 
 ## Check that it works
 

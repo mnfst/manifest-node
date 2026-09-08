@@ -25,9 +25,9 @@ jobs:
       - run: npm pack
       - name: Test installed package
         run: |
-          package_file=$(realpath mnfst-node-*.tgz)
+          package_file=$(realpath manifest-*.tgz)
           install_dir=$(mktemp -d)
           cd "$install_dir"
           npm install --ignore-scripts "$package_file"
-          node -e "const {manifest,flush}=require('@mnfst/node'); if(typeof manifest!=='function'||typeof flush!=='function') process.exit(1)"
-          node --input-type=module -e "import {manifest,flush} from '@mnfst/node'; if(typeof manifest!=='function'||typeof flush!=='function') process.exit(1)"
+          node -e "const {manifest,flush}=require('manifest'); if(typeof manifest!=='function'||typeof flush!=='function') process.exit(1)"
+          node --input-type=module -e "import {manifest,flush} from 'manifest'; if(typeof manifest!=='function'||typeof flush!=='function') process.exit(1)"
