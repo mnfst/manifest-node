@@ -1,6 +1,8 @@
 # Manifest for Node.js
 
 [![CI](https://github.com/mnfst/manifest-node/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mnfst/manifest-node/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/manifest?label=npm)](https://www.npmjs.com/package/manifest)
+[![npm downloads](https://img.shields.io/npm/dm/manifest?label=npm%20downloads)](https://www.npmjs.com/package/manifest)
 
 Repair failed JSON API requests automatically. Works with Node's built-in `fetch`, for everyday APIs and LLMs alike.
 
