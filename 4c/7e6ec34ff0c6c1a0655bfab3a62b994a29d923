@@ -1,0 +1,36 @@
+tests/types.cts
+  s_c09f13f3702a94::t_199476d1fd040b 1
+src/api.ts
+  s_c09f13f3702a94::t_199476d1fd040b 4
+.github/workflows/publish.yml
+  s_c09f13f3702a94::t_199476d1fd040b 1-23
+tests/types.mts
+  s_c09f13f3702a94::t_199476d1fd040b 1
+.github/workflows/ci.yml
+  s_c09f13f3702a94::t_199476d1fd040b 28,32-33
+README.md
+  s_c09f13f3702a94::t_199476d1fd040b 8,20,23,26,49,71
+docs/guide.md
+  s_c09f13f3702a94::t_199476d1fd040b 52
+package.json
+  s_c09f13f3702a94::t_26a76cddeca8f1 45
+  s_c09f13f3702a94::t_199476d1fd040b 2-3
+package-lock.json
+  s_c09f13f3702a94::t_896e51db25b618 2-3,8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "4c7e6ec34ff0c6c1a0655bfab3a62b994a29d923",
+  "prompts": {},
+  "sessions": {
+    "s_c09f13f3702a94": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08049-9f6a-7593-9529-2962adffcb0e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
