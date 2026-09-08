@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { VERSION } from '../src/api.js';
+
+test('runtime version matches the package version', () => {
+  const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
+  assert.equal(VERSION, packageJson.version);
+});
 
 test('ESM and CommonJS share one installation and expose manifest without compatibility aliases', () => {
   const script = `

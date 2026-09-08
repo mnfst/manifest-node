@@ -72,6 +72,14 @@ npm pack
 MNFST_TEST_APP_URL=http://127.0.0.1:5310 npm run test:live
 ```
 
+Add a changeset to each pull request that changes the published package:
+
+```sh
+npm run changeset
+```
+
+Select `patch` for compatible fixes, `minor` for compatible features, and `major` for breaking changes. Documentation and CI-only pull requests do not need a changeset. Merges to `main` update a rolling release pull request; merging that release pull request publishes the committed version.
+
 CI runs Node 22, 24 and 26, checks both declaration formats, and installs the packed artifact. The live app test runs locally because cross-repository CI access to the private app is not configured.
 
 Deploy the outcome contract in [app PR #3](https://github.com/mnfst/app/pull/3) before using this SDK. See [CONTRACT.md](../CONTRACT.md) for the shared Python/Node wire protocol.
