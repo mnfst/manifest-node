@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/manifest?label=npm)](https://www.npmjs.com/package/manifest)
 [![npm downloads](https://img.shields.io/npm/dm/manifest?label=npm%20downloads)](https://www.npmjs.com/package/manifest)
 
-Repair failed JSON API requests automatically. Works with Node's built-in `fetch`, for everyday APIs and LLMs alike.
+Repair failed JSON API requests automatically. Works with built-in `fetch`, Node HTTP clients and Axios.
 
 ```js
 import { manifest } from 'manifest';
@@ -45,7 +45,7 @@ Your server must support the [SDK API contract](CONTRACT.md). The local app must
 
 ### 3. Initialize before your requests
 
-Call `manifest()` once at startup, before other libraries save a reference to `fetch`. Save this as `example.mjs`, replacing the example endpoint and payload with your own:
+Call `manifest()` once at startup, before other libraries save a reference to `fetch`, `node:http` or `node:https`. Save this as `example.mjs`, replacing the example endpoint and payload with your own:
 
 ```js
 import { manifest, flush } from 'manifest';
@@ -80,7 +80,7 @@ Send a JSON request that your test API rejects with **400, 404 or 422**. Check t
 
 - **One retry.** Manifest returns a repair; the SDK sends the corrected request directly to your API.
 - **Original error if healing is unavailable.** A heal call can add up to 60 seconds. If a retry returns an HTTP response, that response reaches your application.
-- **Built-in fetch.** Browser JavaScript, default Axios, `node:http` and separately imported fetch implementations are not intercepted.
+- **Node HTTP clients.** Built-in `fetch`, `node:http`, `node:https` and default Axios requests are covered. Browser JavaScript and separately imported fetch implementations are not intercepted.
 - **Retry semantics still matter.** Use idempotency keys where needed; a repeated request can repeat side effects.
 
 ## Privacy

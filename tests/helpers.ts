@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { once } from 'node:events';
+import { gzipSync } from 'node:zlib';
 import type { Capture, HealResult, Outcome } from '../src/types.js';
 import { Runtime } from '../src/runtime.js';
 export const ATTEMPT = '33333333-3333-4333-8333-333333333333';
@@ -43,6 +44,12 @@ export async function rig() {
   const provider = await server(async (req, res) => {
     const body = await jsonBody(req); const path = req.url!;
     requests.push({ path, body, headers: req.headers });
+    if (path.startsWith('/gzip')) {
+      const status = body?.limit > 100 ? 400 : 200;
+      const payload = status === 400 ? error : { received: body };
+      res.writeHead(status, { 'content-type': 'application/json', 'content-encoding': 'gzip' });
+      res.end(gzipSync(JSON.stringify(payload))); return;
+    }
     if (body?.limit > 100 || path.startsWith('/same')) { reply(res, 400, error); return; }
     if (path.startsWith('/transport')) { res.destroy(); return; }
     if (path.startsWith('/stream')) {

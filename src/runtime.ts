@@ -22,8 +22,13 @@ export class Runtime {
     const response = await this.original(request, extras);
     const responseTimeMs = performance.now() - started;
     if (!eligible.has(response.status) || response.redirected || !this.api.enabled()) return response;
-    return this.repair(request, extras, response, await bodyPromise, responseTimeMs);
+    return this.handleResponse(request, response, await bodyPromise, responseTimeMs, extras);
   };
+  async handleResponse(request: Request, response: Response, body: { body: unknown; complete: boolean },
+    responseTimeMs: number, extras: RequestInit = {}): Promise<Response> {
+    if (!eligible.has(response.status) || response.redirected || !this.api.enabled()) return response;
+    return this.repair(request, extras, response, body, responseTimeMs);
+  }
   private async repair(request: Request, extras: RequestInit, original: Response,
     body: { body: unknown; complete: boolean }, responseTimeMs: number): Promise<Response> {
     let response = original;

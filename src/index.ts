@@ -1,3 +1,4 @@
+import { installHttp } from './http.js';
 import { Runtime } from './runtime.js';
 import { warn } from './api.js';
 import type { ManifestOptions } from './types.js';
@@ -25,6 +26,7 @@ export function manifest(options: ManifestOptions = {}): void {
   }
   const runtime = new Runtime(resolved, globalThis.fetch.bind(globalThis));
   globalThis.fetch = runtime.fetch;
+  installHttp(runtime);
   globals[STATE] = runtime;
 }
 
