@@ -4,7 +4,7 @@
 
 ## Configuration
 
-Call `manifest()` once at startup, before other libraries save a reference to `fetch`.
+Call `manifest()` once at startup, before other libraries save a reference to `fetch`, `node:http` or `node:https`.
 
 | Option | Environment | Default |
 | --- | --- | --- |
@@ -28,17 +28,18 @@ manifest({
 ## Supported traffic
 
 - Built-in global `fetch`, including `Request` inputs and libraries that call global fetch after installation.
+- `node:http` and `node:https`, including Axios with its default HTTP adapter.
 - Failures after automatic redirects pass through: the original method/body may not describe the failing hop.
 - Captures HTTP 400, 404 and 422. Other statuses and network failures before an HTTP response pass through.
 - Generic JSON APIs, including LLM APIs. No provider-specific request format is required.
 - One retry per capture. Same-origin URL and header repairs are supported by the SDK; the current app returns JSON body repairs.
 - Successful calls and successful retries remain streamed. Failed responses retain their bytes, status, headers, URL and redirect metadata.
 
-**Not covered:** browser JavaScript, `node:http`/`node:https`, the default Axios HTTP adapter, directly imported `undici.fetch`/`node-fetch`, and fetch references saved before initialization. Those transports need separate integration. This SDK does not claim to intercept every Node HTTP client.
+**Not covered:** browser JavaScript, HTTP/2, directly imported `undici.fetch`/`node-fetch`, and transport references saved before initialization. Those transports need separate integration. This SDK does not claim to intercept every Node HTTP client.
 
 ## Limits and failure behavior
 
-- Request capture is bounded to 256 KiB and JSON depth 64. It tees the upload alongside the original call, reading for at most one second. Oversized or slow uploads travel as `null` and are not retried.
+- Request capture is bounded to 256 KiB and JSON depth 64. Fetch uploads are teed for at most one second; Node HTTP writes are copied as they are sent. Oversized or slow fetch uploads travel as `null` and are not retried.
 - Error capture reads at most 64 KiB plus one transport chunk, within one second. The prefix and remaining stream are preserved for the caller. Incomplete errors are reported without retry. One unusually large transport chunk can exceed that memory estimate.
 - The Manifest heal call has a 60-second deadline and at most eight concurrent requests. Capacity exhaustion and service errors return the original API error response.
 - Caller abort signals apply during healing and retry; cancellation remains observable to the caller.
