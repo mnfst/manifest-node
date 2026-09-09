@@ -5,9 +5,7 @@ import { Readable } from 'node:stream';
 import { createBrotliDecompress, createUnzip } from 'node:zlib';
 import { parseRequestBody, serializeRequestBody } from './wire.js';
 import { REQUEST_LIMIT } from './capture.js';
-import type { Runtime } from './runtime.js';
-
-const eligible = new Set([400, 404, 422]);
+import { eligible, type Runtime } from './runtime.js';
 type RequestArgs = Parameters<typeof http.request>;
 type RequestCallback = (response: IncomingMessage) => void;
 
@@ -42,7 +40,7 @@ function wrapRequest(original: typeof http.request, protocol: 'http:' | 'https:'
     request.emit = ((event: string | symbol, ...values: unknown[]) => {
       if (event !== 'response') return emit(event, ...values);
       const response = values[0] as IncomingMessage;
-      if (!eligible.has(response.statusCode ?? 0) || !runtime.api.enabled()) {
+      if (!eligible(response.statusCode ?? 0) || !runtime.api.enabled()) {
         return emit(event, ...values);
       }
       void handleResponse(runtime, request, response, protocol, capture.body(), signal, started)
