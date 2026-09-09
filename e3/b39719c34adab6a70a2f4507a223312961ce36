@@ -1,0 +1,25 @@
+docs/healing-diagram.svg
+  s_d529c6f893ca4d::t_a1b9607aaa67cf 1-549
+README.md
+  s_d529c6f893ca4d::t_62189e19958a0c 7-11,16,24,26-28,34,36,47-51,53-54,56,58-60
+  s_d529c6f893ca4d::t_a1b9607aaa67cf 22
+docs/guide.md
+  s_d529c6f893ca4d::t_b7c0c1ffdb2028 15-17,30-32
+  s_d529c6f893ca4d::t_2d6025c00f0dd5 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e3b39719c34adab6a70a2f4507a223312961ce36",
+  "prompts": {},
+  "sessions": {
+    "s_d529c6f893ca4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce50773a-e522-444c-962b-aa25ff65fc82",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
