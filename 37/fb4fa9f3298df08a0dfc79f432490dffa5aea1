@@ -1,0 +1,44 @@
+src/runtime.ts
+  s_ff0fcb838767c9::t_d062a5d7e81241 25,27-31
+src/http.ts
+  s_ff0fcb838767c9::t_d062a5d7e81241 1-2,4,6-20,22-38,40-47,49,54-94,108-117,122-137,139-151,156,161-170,172-177,179
+  s_ff0fcb838767c9::t_8c91f5d9b8fef3 138,152-155,157-160
+  s_ff0fcb838767c9::t_ddd444b92867ba 3,5,21,39,48,50-53,95-107,118-121,171,178
+.changeset/tidy-pandas-heal.md
+  s_ff0fcb838767c9::t_85572690f2233e 1-5
+tests/helpers.ts
+  s_ff0fcb838767c9::t_85572690f2233e 3,47-52
+src/index.ts
+  s_ff0fcb838767c9::t_d062a5d7e81241 1,29
+package.json
+  s_ff0fcb838767c9::t_2bd89751fa4aa2 42
+  s_ff0fcb838767c9::t_ddd444b92867ba 4
+docs/guide.md
+  s_ff0fcb838767c9::t_2bd89751fa4aa2 42
+  s_ff0fcb838767c9::t_d062a5d7e81241 7,31,38
+README.md
+  s_ff0fcb838767c9::t_d062a5d7e81241 48,83
+  s_ff0fcb838767c9::t_ddd444b92867ba 7
+tests/http.test.ts
+  s_ff0fcb838767c9::t_85572690f2233e 3,8,29-46,48-49
+  s_ff0fcb838767c9::t_ddd444b92867ba 17-23,27-28,47
+  s_ff0fcb838767c9::t_d062a5d7e81241 1-2,4-7,9-16,24-26,50
+package-lock.json
+  s_ff0fcb838767c9::t_df460d1090f19e 13,1284-1296,1341-1360,1413-1426,1450-1462,1523-1532,1556-1570,1585-1633,1781-1818,1849-1897,1932-1944,1952-2007,2211-2220,2258-2280,2560-2569
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "37fb4fa9f3298df08a0dfc79f432490dffa5aea1",
+  "prompts": {},
+  "sessions": {
+    "s_ff0fcb838767c9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0869f-a2ac-7903-b78f-2a7aa36f8fff",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
