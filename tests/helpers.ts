@@ -8,7 +8,11 @@ export const error = { error: { message: 'range of limit should be [1, 100]', pa
 export async function jsonBody(request: IncomingMessage) {
   const chunks = [];
   for await (const chunk of request) chunks.push(Buffer.from(chunk));
-  return JSON.parse(Buffer.concat(chunks).toString() || 'null');
+  const text = Buffer.concat(chunks).toString();
+  if (request.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase() === 'application/x-www-form-urlencoded') {
+    return Object.fromEntries(new URLSearchParams(text));
+  }
+  return JSON.parse(text || 'null');
 }
 export function reply(response: ServerResponse, status: number, body: unknown) {
   response.writeHead(status, { 'content-type': 'application/json' }); response.end(JSON.stringify(body));

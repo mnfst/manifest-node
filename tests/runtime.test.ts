@@ -19,6 +19,51 @@ test('repairs JSON, masks credentials, preserves withheld fields and reports act
   await r.runtime.api.flush(); assert.deepEqual(r.outcomes, [{ response: { statusCode: 200 } }]);
 });
 
+test('repairs fetch form-urlencoded bodies without changing their encoding', async t => {
+  const r = await rig(); t.after(r.close);
+  r.config.result.healedRequest = { body: { limit: '100' } };
+  const response = await r.runtime.fetch(r.provider.url + '/repair', {
+    method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+    body: 'limit=500',
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(r.captures[0]!.request.body, { limit: '500' });
+  assert.deepEqual(r.requests.map(request => request.body), [{ limit: '500' }, { limit: '100' }]);
+  assert.equal(r.requests[1]!.headers['content-type'], 'application/x-www-form-urlencoded; charset=UTF-8');
+});
+
+test('does not retry malformed or oversized form-urlencoded bodies', async t => {
+  const r = await rig(); t.after(r.close);
+  r.config.result.healedRequest = { body: { limit: '100' } };
+  for (const body of ['limit=%GG', `limit=${'1'.repeat(262_145)}`]) {
+    const response = await r.runtime.fetch(r.provider.url + '/same', {
+      method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body,
+    });
+    assert.equal(response.status, 400); await response.body?.cancel();
+  }
+  assert.equal(r.requests.length, 2);
+  assert.deepEqual(r.captures.map(capture => capture.request.body), [null, null]);
+});
+
+test('replays nested form fields as bracket keys and skips non-object healed bodies', async t => {
+  const r = await rig(); t.after(r.close);
+  r.config.result.healedRequest = { body: { limit: '100', line_items: [{ price: 'price_123' }] } };
+  const response = await r.runtime.fetch(r.provider.url + '/repair', {
+    method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: 'limit=500&line_items%5B0%5D%5Bprice%5D=price_000',
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(r.captures[0]!.request.body, { limit: '500', line_items: [{ price: 'price_000' }] });
+  assert.deepEqual(r.requests[1]!.body, { limit: '100', 'line_items[0][price]': 'price_123' });
+
+  r.config.result.healedRequest = { body: 'limit=100' };
+  const rejected = await r.runtime.fetch(r.provider.url + '/same', {
+    method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'limit=500',
+  });
+  assert.equal(rejected.status, 400); await rejected.body?.cancel();
+  assert.equal(r.requests.length, 3);
+});
+
 test('supports Request inputs and streamed requests without losing the original body', async t => {
   const r = await rig(); t.after(r.close);
   const input = new Request(r.provider.url + '/repair', { method: 'POST', body: JSON.stringify({ limit: 500 }) });

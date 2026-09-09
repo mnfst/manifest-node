@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { HealApi, warn } from './api.js';
 import { captureRequest, captureResponse } from './capture.js';
-import { isObject, mergeBody, safeHeaders, safeUrl, travelingBody, TRANSPORT_ERROR } from './wire.js';
+import { isObject, mergeBody, safeHeaders, safeUrl, serializeRequestBody, travelingBody, TRANSPORT_ERROR } from './wire.js';
 import type { Capture, Fetch, HealResult, ManifestOptions } from './types.js';
 const eligible = new Set([400, 404, 422]);
 export interface ResolvedOptions extends ManifestOptions { key: string; url: string }
@@ -96,6 +96,7 @@ function buildRetry(request: Request, originalBody: unknown, result: HealResult 
     const url = new URL(healed.url ?? request.url);
     if (url.origin !== new URL(request.url).origin || url.username || url.password) return null;
     const headers = new Headers(request.headers);
+    const contentType = headers.get('content-type');
     headers.delete('content-length');
     if (healed.headers !== undefined && !isObject(healed.headers)) return null;
     for (const [name, value] of Object.entries(healed.headers ?? {})) {
@@ -104,11 +105,12 @@ function buildRetry(request: Request, originalBody: unknown, result: HealResult 
       else return null;
     }
     const body = Object.hasOwn(healed, 'body') ? mergeBody(originalBody, healed.body) : originalBody;
-    // The app currently repairs JSON bodies. Never invent a replay of a binary
-    // or streamed upload when its original data was not captured as JSON.
+    // Never invent a replay of a binary or streamed upload when its original
+    // data was not captured as a supported structured body.
     if (body === null && !['GET', 'HEAD'].includes(request.method)) return null;
     return new Request(url, {
-      method: request.method, headers, body: ['GET', 'HEAD'].includes(request.method) ? undefined : JSON.stringify(body),
+      method: request.method, headers,
+      body: ['GET', 'HEAD'].includes(request.method) ? undefined : serializeRequestBody(body, contentType),
       signal: request.signal, redirect: request.redirect, credentials: request.credentials,
       cache: request.cache, integrity: request.integrity, keepalive: request.keepalive,
       mode: request.mode, referrer: request.referrer, referrerPolicy: request.referrerPolicy,
