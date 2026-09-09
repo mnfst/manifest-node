@@ -3,7 +3,14 @@ import { HealApi, warn } from './api.js';
 import { captureRequest, captureResponse } from './capture.js';
 import { isObject, mergeBody, safeHeaders, safeUrl, serializeRequestBody, travelingBody, TRANSPORT_ERROR } from './wire.js';
 import type { Capture, Fetch, HealResult, ManifestOptions } from './types.js';
-const eligible = new Set([400, 404, 422]);
+// Only request-side failures are worth capturing. The forbidden statuses are
+// the ones editing the request cannot fix: 401/403 (auth), 402 (billing),
+// 429 (rate limits) and, via the upper bound, every 5xx. Everything else in
+// 4xx is fair game -- 409, 413, 415 and 451 all describe a request the server
+// refused to accept.
+const forbidden = new Set([401, 402, 403, 429]);
+export const eligible = (status: number): boolean =>
+  status >= 400 && status < 500 && !forbidden.has(status);
 export interface ResolvedOptions extends ManifestOptions { key: string; url: string }
 
 export class Runtime {
@@ -21,12 +28,12 @@ export class Runtime {
     const started = performance.now();
     const response = await this.original(request, extras);
     const responseTimeMs = performance.now() - started;
-    if (!eligible.has(response.status) || response.redirected || !this.api.enabled()) return response;
+    if (!eligible(response.status) || response.redirected || !this.api.enabled()) return response;
     return this.handleResponse(request, response, await bodyPromise, responseTimeMs, extras);
   };
   async handleResponse(request: Request, response: Response, body: { body: unknown; complete: boolean },
     responseTimeMs: number, extras: RequestInit = {}): Promise<Response> {
-    if (!eligible.has(response.status) || response.redirected || !this.api.enabled()) return response;
+    if (!eligible(response.status) || response.redirected || !this.api.enabled()) return response;
     return this.repair(request, extras, response, body, responseTimeMs);
   }
   private async repair(request: Request, extras: RequestInit, original: Response,

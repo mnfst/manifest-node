@@ -29,14 +29,14 @@ manifest({
 
 ## Verifying the installation
 
-Send a JSON request that your test API rejects with 400, 404 or 422. The failure appears in your project's dashboard, and the `onHeal` callback reports the repair result. A successful request alone does not contact Manifest. In short-lived scripts, call `flush()` before exiting so outcome reports are delivered.
+Send a JSON request that your test API rejects with 400, 404, 422 or any other request-side 4xx. The failure appears in your project's dashboard, and the `onHeal` callback reports the repair result. A successful request alone does not contact Manifest. In short-lived scripts, call `flush()` before exiting so outcome reports are delivered.
 
 ## Supported traffic
 
 - Built-in global `fetch`, including `Request` inputs and libraries that call global fetch after installation.
 - `node:http` and `node:https`, including Axios with its default HTTP adapter.
 - Failures after automatic redirects pass through: the original method/body may not describe the failing hop.
-- Captures HTTP 400, 404 and 422. Other statuses and network failures before an HTTP response pass through.
+- Captures any 4xx except 401, 402, 403 and 429. Those four, every 5xx, and network failures before an HTTP response pass through: authentication, billing, rate limiting and server faults are not things editing the request can fix.
 - JSON and `application/x-www-form-urlencoded` APIs, including nested form fields. No provider-specific request format is required.
 - One retry per capture. Same-origin URL and header repairs are supported by the SDK; the current app returns structured body repairs.
 - Successful calls and successful retries remain streamed. Failed responses retain their bytes, status, headers, URL and redirect metadata.

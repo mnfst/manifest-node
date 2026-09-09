@@ -167,12 +167,26 @@ test('does not retry with incomplete capture evidence', async () => {
   await runtime.api.flush(); assert.equal(upstreamCalls, 1); assert.equal(reports, 1);
 });
 
-for (const status of [401, 403, 429, 503]) {
+// Forbidden: editing the request cannot fix auth, billing, rate limits or a
+// server fault. Everything else in 4xx is a request the server refused.
+for (const status of [200, 204, 301, 401, 402, 403, 429, 500, 503, 599]) {
   test(`HTTP ${status} passes through without a heal call`, async () => {
     let calls = 0;
-    const response = new Response('untouched', { status });
+    const response = new Response(status === 204 ? null : 'untouched', { status });
     const runtime = new Runtime({ key: 'k', url: 'http://manifest/' }, async () => { calls++; return response; });
     assert.equal(await runtime.fetch('http://provider'), response); assert.equal(calls, 1);
+  });
+}
+
+for (const status of [400, 404, 405, 409, 410, 413, 415, 422, 428, 451, 499]) {
+  test(`HTTP ${status} is captured as a request-side failure`, async () => {
+    let calls = 0;
+    const runtime = new Runtime({ key: 'k', url: 'http://manifest/' }, async () => {
+      calls++; return new Response('nope', { status });
+    });
+    const response = await runtime.fetch('http://provider');
+    // the original error still reaches the caller; the second call is the heal
+    assert.equal(response.status, status); assert.equal(calls, 2);
   });
 }
 
