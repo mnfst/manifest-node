@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { captureResponse } from '../src/capture.js';
-import { boundedJson, mergeBody, safeUrl } from '../src/wire.js';
+import { boundedJson, mergeBody, parseRequestBody, safeUrl, serializeRequestBody } from '../src/wire.js';
 
 test('bounded prefix replays every original byte', async () => {
   let reads = 0;
@@ -38,4 +38,21 @@ test('JSON depth is bounded and credential restoration is prototype-safe', () =>
   assert.equal(({} as { polluted?: boolean }).polluted, undefined);
   assert.deepEqual(JSON.parse(JSON.stringify(result)), { apiKey: 'secret', ...JSON.parse('{"__proto__":{"polluted":true},"new":true}') });
   assert.equal(safeUrl('https://u:p@example.com/path?token=secret#private'), 'https://example.com/path?token=REDACTED');
+});
+
+test('form-urlencoded bodies parse and serialize nested fields', () => {
+  const contentType = 'Application/X-Www-Form-Urlencoded; charset=UTF-8';
+  const parsed = parseRequestBody(new TextEncoder().encode(
+    'line_items%5B0%5D%5Bprice%5D=price_123&line_items%5B0%5D%5Bquantity%5D=2&expand=customer&expand=invoice'), contentType);
+  assert.deepEqual(parsed, { valid: true, body: {
+    line_items: [{ price: 'price_123', quantity: '2' }], expand: ['customer', 'invoice'],
+  } });
+  assert.deepEqual(parseRequestBody(new TextEncoder().encode(serializeRequestBody(parsed.body, contentType)), contentType), parsed);
+});
+
+test('form-urlencoded parsing rejects malformed and unsafe fields', () => {
+  const contentType = 'application/x-www-form-urlencoded';
+  assert.deepEqual(parseRequestBody(new TextEncoder().encode('name=%GG'), contentType), { body: null, valid: false });
+  assert.deepEqual(parseRequestBody(new TextEncoder().encode('__proto__%5Bpolluted%5D=yes'), contentType), { body: null, valid: false });
+  assert.equal(({} as { polluted?: string }).polluted, undefined);
 });

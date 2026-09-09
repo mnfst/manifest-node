@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/manifest?label=npm)](https://www.npmjs.com/package/manifest)
 [![npm downloads](https://img.shields.io/npm/dm/manifest?label=npm%20downloads)](https://www.npmjs.com/package/manifest)
 
-Repair failed JSON API requests automatically. Works with built-in `fetch`, Node HTTP clients and Axios.
+Repair failed JSON and form-urlencoded API requests automatically. Works with built-in `fetch`, Node HTTP clients and Axios.
 
 ```js
 import { manifest } from 'manifest';
@@ -74,7 +74,7 @@ CommonJS uses `const { manifest, flush } = require('manifest')`.
 
 ## Check that it works
 
-Send a JSON request that your test API rejects with **400, 404 or 422**. Check the failure in your project's dashboard and the `onHeal` callback for the repair result. A successful request alone does not contact Manifest. `flush()` lets a short script wait for outcome reports before exiting.
+Send a JSON or `application/x-www-form-urlencoded` request that your test API rejects with **400, 404 or 422**. Check the failure in your project's dashboard and the `onHeal` callback for the repair result. A successful request alone does not contact Manifest. `flush()` lets a short script wait for outcome reports before exiting.
 
 ## What to expect
 
@@ -85,7 +85,7 @@ Send a JSON request that your test API rejects with **400, 404 or 422**. Check t
 
 ## Privacy
 
-Manifest receives failed request URLs, headers, JSON bodies and error responses. Known credential fields are masked or withheld, but nested secrets, prompts and business data can still be sent. Enable it only for traffic you permit your Manifest server to process and store.
+Manifest receives failed request URLs, headers, JSON or form-urlencoded bodies, and error responses. Known credential fields are masked or withheld, but nested secrets, prompts and business data can still be sent. Enable it only for traffic you permit your Manifest server to process and store.
 
 ## More
 

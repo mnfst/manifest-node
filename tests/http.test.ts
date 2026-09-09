@@ -47,4 +47,28 @@ test('default Axios and node:http requests are healed', async t => {
   assert.deepEqual(r.requests.map(request => request.body),
     [{ limit: 50 }, { limit: 500 }, { limit: 500 }, { limit: 100 },
       { limit: 500 }, { limit: 100 }, { limit: 500 }, { limit: 100 }]);
+  r.config.result = { status: 'unverified', healAttemptId: '33333333-3333-4333-8333-333333333333',
+    healedRequest: { body: { limit: '100' } } };
+
+  const axiosResponse = await axios.post(r.provider.url + '/repair', new URLSearchParams({ limit: '500' }), { proxy: false });
+  assert.equal(axiosResponse.status, 200);
+
+  const directForm = await new Promise<{ status: number | undefined; body: unknown }>((resolve, reject) => {
+    const request = http.request(r.provider.url + '/repair', {
+      method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+    }, response => {
+      const chunks: Buffer[] = [];
+      response.on('data', chunk => chunks.push(Buffer.from(chunk)));
+      response.on('end', () => resolve({ status: response.statusCode,
+        body: JSON.parse(Buffer.concat(chunks).toString()) }));
+      response.on('error', reject);
+    });
+    request.on('error', reject);
+    request.end('limit=500');
+  });
+  assert.deepEqual(directForm, { status: 200, body: { received: { limit: '100' } } });
+  assert.deepEqual(r.captures.slice(4).map(capture => capture.request.body), [{ limit: '500' }, { limit: '500' }]);
+  assert.deepEqual(r.requests.slice(8).map(request => request.body),
+    [{ limit: '500' }, { limit: '100' }, { limit: '500' }, { limit: '100' }]);
+  assert.ok(r.requests.slice(8).every(request => request.headers['content-type']?.startsWith('application/x-www-form-urlencoded')));
 });

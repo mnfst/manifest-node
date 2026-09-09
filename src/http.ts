@@ -3,7 +3,7 @@ import https from 'node:https';
 import { syncBuiltinESMExports } from 'node:module';
 import { Readable } from 'node:stream';
 import { createBrotliDecompress, createUnzip } from 'node:zlib';
-import { parseJson } from './wire.js';
+import { parseRequestBody, serializeRequestBody } from './wire.js';
 import { REQUEST_LIMIT } from './capture.js';
 import type { Runtime } from './runtime.js';
 
@@ -81,7 +81,7 @@ function webRequest(request: ClientRequest, protocol: string, captured: { body: 
   return new Request(url, {
     method, headers, signal,
     body: ['GET', 'HEAD'].includes(method) || !captured.complete || captured.body === null
-      ? undefined : JSON.stringify(captured.body),
+      ? undefined : serializeRequestBody(captured.body, headers.get('content-type')),
   });
 }
 
@@ -159,7 +159,13 @@ function captureBody(request: ClientRequest) {
     record(args[0], typeof args[1] === 'string' ? args[1] as BufferEncoding : undefined);
     return Reflect.apply(end, request, args);
   }) as ClientRequest['end'];
-  return { body: () => ({ body: complete ? parseJson(Buffer.concat(chunks, size)) : null, complete }) };
+  return { body: () => {
+    if (!complete) return { body: null, complete: false };
+    const header = request.getHeader('content-type');
+    const contentType = Array.isArray(header) ? header[0] : header === undefined ? undefined : String(header);
+    const parsed = parseRequestBody(Buffer.concat(chunks, size), contentType);
+    return { body: parsed.body, complete: parsed.valid };
+  } };
 }
 
 function requestSignal(args: unknown[]): AbortSignal | undefined {

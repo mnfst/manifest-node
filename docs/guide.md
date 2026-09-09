@@ -31,15 +31,16 @@ manifest({
 - `node:http` and `node:https`, including Axios with its default HTTP adapter.
 - Failures after automatic redirects pass through: the original method/body may not describe the failing hop.
 - Captures HTTP 400, 404 and 422. Other statuses and network failures before an HTTP response pass through.
-- Generic JSON APIs, including LLM APIs. No provider-specific request format is required.
-- One retry per capture. Same-origin URL and header repairs are supported by the SDK; the current app returns JSON body repairs.
+- JSON and `application/x-www-form-urlencoded` APIs, including nested form fields. No provider-specific request format is required.
+- One retry per capture. Same-origin URL and header repairs are supported by the SDK; the current app returns structured body repairs.
 - Successful calls and successful retries remain streamed. Failed responses retain their bytes, status, headers, URL and redirect metadata.
 
 **Not covered:** browser JavaScript, HTTP/2, directly imported `undici.fetch`/`node-fetch`, and transport references saved before initialization. Those transports need separate integration. This SDK does not claim to intercept every Node HTTP client.
 
 ## Limits and failure behavior
 
-- Request capture is bounded to 256 KiB and JSON depth 64. Fetch uploads are teed for at most one second; Node HTTP writes are copied as they are sent. Oversized or slow fetch uploads travel as `null` and are not retried.
+- Request capture is bounded to 256 KiB and structure depth 64. Fetch uploads are teed for at most one second; Node HTTP writes are copied as they are sent. Oversized, malformed or slow fetch uploads travel as `null` and are not retried.
+- Form-urlencoded retries are re-encoded from the parsed structure, so repeated keys such as `expand=a&expand=b` return as `expand[0]=a&expand[1]=b`. Servers that reject indexed keys see the retry fail like any other unsuccessful repair.
 - Error capture reads at most 64 KiB plus one transport chunk, within one second. The prefix and remaining stream are preserved for the caller. Incomplete errors are reported without retry. One unusually large transport chunk can exceed that memory estimate.
 - The Manifest heal call has a 60-second deadline and at most eight concurrent requests. Capacity exhaustion and service errors return the original API error response.
 - Caller abort signals apply during healing and retry; cancellation remains observable to the caller.
@@ -58,7 +59,7 @@ await flush({ timeoutMs: 5000 });
 
 ## Data sent to Manifest
 
-Failed URLs, request headers, JSON bodies and raw error responses go to the configured server. Known credential names in query parameters and headers are masked; credential-named top-level request body fields are withheld and restored on retry. Exception prose is not sent for transport failures.
+Failed URLs, request headers, JSON or form-urlencoded bodies, and raw error responses go to the configured server. Known credential names in query parameters and headers are masked; credential-named top-level request body fields are withheld and restored on retry. Exception prose is not sent for transport failures.
 
 This is not general secret detection: nested fields, arbitrary secret names, business data and response bodies may contain sensitive information. Enable it only for traffic you permit Manifest to process and store. The SDK makes the actual retry locally.
 
