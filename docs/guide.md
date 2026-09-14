@@ -4,7 +4,7 @@
 
 ## Configuration
 
-Call `manifest()` once at startup, before other libraries save a reference to `fetch`.
+Call `manifest()` once at startup, before other libraries save a reference to `fetch`, `node:http` or `node:https`.
 
 | Option | Environment | Default |
 | --- | --- | --- |
@@ -12,7 +12,9 @@ Call `manifest()` once at startup, before other libraries save a reference to `f
 | `url` | `MNFST_URL` | `https://api.manifest.build` |
 | `onHeal` | — | Optional local callback |
 
-Explicit options take precedence. Reconfiguration requires a restart. ESM and CommonJS imports share one process-wide installation.
+Explicit options take precedence. Reconfiguration requires a restart. ESM and CommonJS imports share one process-wide installation; CommonJS uses `const { manifest } = require('manifest')`.
+
+To target a local Manifest app instead of `https://api.manifest.build`, set `MNFST_URL` (for example `http://127.0.0.1:5310`). The app must already be running and support the [SDK API contract](../CONTRACT.md).
 
 ```ts
 manifest({
@@ -25,20 +27,26 @@ manifest({
 
 `onHeal` receives `url`, `statusCode`, `healStatus`, `replayStatusCode`, `healMs` and optional `operations`. URLs have known credential query fields masked. Callback errors do not fail application requests.
 
+## Verifying the installation
+
+Send a JSON request that your test API rejects with 400, 404, 422 or any other request-side 4xx. The failure appears in your project's dashboard, and the `onHeal` callback reports the repair result. A successful request alone does not contact Manifest. Outcome reports are asynchronous, so a short-lived script may exit before the report is delivered.
+
 ## Supported traffic
 
 - Built-in global `fetch`, including `Request` inputs and libraries that call global fetch after installation.
+- `node:http` and `node:https`, including Axios with its default HTTP adapter.
 - Failures after automatic redirects pass through: the original method/body may not describe the failing hop.
-- Captures HTTP 400, 404 and 422. Other statuses and network failures before an HTTP response pass through.
-- Generic JSON APIs, including LLM APIs. No provider-specific request format is required.
-- One retry per capture. Same-origin URL and header repairs are supported by the SDK; the current app returns JSON body repairs.
+- Captures any 4xx except 401, 402, 403 and 429. Those four, every 5xx, and network failures before an HTTP response pass through: authentication, billing, rate limiting and server faults are not things editing the request can fix.
+- JSON and `application/x-www-form-urlencoded` APIs, including nested form fields. No provider-specific request format is required.
+- One retry per capture. Same-origin URL and header repairs are supported by the SDK; the current app returns structured body repairs.
 - Successful calls and successful retries remain streamed. Failed responses retain their bytes, status, headers, URL and redirect metadata.
 
-**Not covered:** browser JavaScript, `node:http`/`node:https`, the default Axios HTTP adapter, directly imported `undici.fetch`/`node-fetch`, and fetch references saved before initialization. Those transports need separate integration. This SDK does not claim to intercept every Node HTTP client.
+**Not covered:** browser JavaScript, HTTP/2, directly imported `undici.fetch`/`node-fetch`, and transport references saved before initialization. Those transports need separate integration. This SDK does not claim to intercept every Node HTTP client.
 
 ## Limits and failure behavior
 
-- Request capture is bounded to 256 KiB and JSON depth 64. It tees the upload alongside the original call, reading for at most one second. Oversized or slow uploads travel as `null` and are not retried.
+- Request capture is bounded to 256 KiB and structure depth 64. Fetch uploads are teed for at most one second; Node HTTP writes are copied as they are sent. Oversized, malformed or slow fetch uploads travel as `null` and are not retried.
+- Form-urlencoded retries are re-encoded from the parsed structure, so repeated keys such as `expand=a&expand=b` return as `expand[0]=a&expand[1]=b`. Servers that reject indexed keys see the retry fail like any other unsuccessful repair.
 - Error capture reads at most 64 KiB plus one transport chunk, within one second. The prefix and remaining stream are preserved for the caller. Incomplete errors are reported without retry. One unusually large transport chunk can exceed that memory estimate.
 - The Manifest heal call has a 60-second deadline and at most eight concurrent requests. Capacity exhaustion and service errors return the original API error response.
 - Caller abort signals apply during healing and retry; cancellation remains observable to the caller.
@@ -50,7 +58,7 @@ Outcome reports are best effort, limited to 64 concurrent requests with five-sec
 
 ## Data sent to Manifest
 
-Failed URLs, request headers, JSON bodies and raw error responses go to the configured server. Known credential names in query parameters and headers are masked; credential-named top-level request body fields are withheld and restored on retry. Exception prose is not sent for transport failures.
+Failed URLs, request headers, JSON or form-urlencoded bodies, and raw error responses go to the configured server. Known credential names in query parameters and headers are masked; credential-named top-level request body fields are withheld and restored on retry. Exception prose is not sent for transport failures.
 
 This is not general secret detection: nested fields, arbitrary secret names, business data and response bodies may contain sensitive information. Enable it only for traffic you permit Manifest to process and store. The SDK makes the actual retry locally.
 
@@ -61,7 +69,7 @@ npm ci
 npm run typecheck
 npm test
 npm pack
-# Optional: creates a synthetic customer/project in a disposable app.
+# Optional: creates a synthetic customer and project on a disposable Manifest server.
 MNFST_TEST_APP_URL=http://127.0.0.1:5310 npm run test:live
 ```
 
@@ -71,8 +79,8 @@ Add a changeset to each pull request that changes the published package:
 npm run changeset
 ```
 
-Select `patch` for compatible fixes, `minor` for compatible features, and `major` for breaking changes. Documentation and CI-only pull requests do not need a changeset. Merges to `main` update a rolling release pull request; merging that release pull request publishes the committed version.
+Select `patch` for compatible fixes, `minor` for compatible features, and `major` for breaking changes. Documentation and CI-only pull requests do not need a changeset. A merge to `main` updates a rolling release pull request. A merge of that release pull request publishes the committed version.
 
-CI runs Node 22, 24 and 26, checks both declaration formats, and installs the packed artifact. The live app test runs locally because cross-repository CI access to the private app is not configured.
+CI runs Node 22, 24 and 26, checks both declaration formats and installs the packed artifact. The `test:live` script runs locally, because CI has no access to a Manifest server.
 
-Deploy the outcome contract in [app PR #3](https://github.com/mnfst/app/pull/3) before using this SDK. See [CONTRACT.md](../CONTRACT.md) for the shared Python/Node wire protocol.
+See [CONTRACT.md](../CONTRACT.md) for the wire protocol that the Python SDK and the Node SDK share.

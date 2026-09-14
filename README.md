@@ -4,48 +4,36 @@
 [![npm version](https://img.shields.io/npm/v/manifest?label=npm)](https://www.npmjs.com/package/manifest)
 [![npm downloads](https://img.shields.io/npm/dm/manifest?label=npm%20downloads)](https://www.npmjs.com/package/manifest)
 
-Repair failed JSON API requests automatically. Works with Node's built-in `fetch`, for everyday APIs and LLMs alike.
-
-```js
-import { manifest } from 'manifest';
-
-manifest();
-// Keep making your API calls as usual.
-```
-
-Your API rejects a request → Manifest finds a repair → the SDK retries once, locally.
-
-## Setup
-
-### 1. Install
-
-Requires **Node.js 22+**:
+**An API rejects your request. Manifest fixes it and retries. You do nothing.**
 
 ```sh
 npm install manifest
 ```
 
-JavaScript, TypeScript, ESM and CommonJS are supported; there are no runtime dependencies.
+```js
+import { manifest } from 'manifest';
 
-### 2. Connect your project
+manifest(); // once, at startup
+// Keep making your API calls as usual.
+```
 
-Create a project in your Manifest dashboard and copy the project key shown during setup. In **Project Settings**, turn **Autofix** on to enable repairs.
+Works with built-in `fetch`, `node:http`, `node:https` and Axios, for JSON and form-urlencoded bodies. Node.js 22+. TypeScript, ESM and CommonJS. Zero dependencies.
+
+![How Manifest heals a failed request: a 400 reaches Manifest, drops to a patch from the knowledge base or the healing agents, and is retried once, returning a 200 OK](docs/healing-diagram.svg)
+
+## Setup
+
+1. Create a project in your Manifest dashboard and copy its project key.
+2. Turn on **Autofix** in **Project Settings**.
+3. Set the key:
 
 ```sh
 export MNFST_KEY='your-project-key'
 ```
 
-The SDK defaults to `https://api.manifest.build`. For a local app running on port 5310, also set:
+Call `manifest()` before any library grabs its own reference to `fetch` or `node:http`.
 
-```sh
-export MNFST_URL='http://127.0.0.1:5310'
-```
-
-Your server must support the [SDK API contract](CONTRACT.md). The local app must already be running.
-
-### 3. Initialize before your requests
-
-Call `manifest()` once at startup, before other libraries save a reference to `fetch`. Save this as `example.mjs`, replacing the example endpoint and payload with your own:
+## See it work
 
 ```js
 import { manifest } from 'manifest';
@@ -56,32 +44,19 @@ manifest({
   },
 });
 
-const response = await fetch('https://api.example.com/orders', {
+const res = await fetch('https://api.example.com/orders', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ limit: 500 }),
+  body: JSON.stringify({ limit: 500 }), // rejected? Manifest retries with a valid limit
 });
-console.log(response.status, await response.text());
 ```
 
-Run it with `node example.mjs`. For an API that rejects `limit: 500` and has a matching repair, Manifest can retry with a valid limit. Repairs depend on the API error and available patches.
+## Good to know
 
-CommonJS uses `const { manifest } = require('manifest')`.
-
-## Check that it works
-
-Send a JSON request that your test API rejects with **400, 404 or 422**. Check the failure in your project's dashboard and the `onHeal` callback for the repair result. A successful request alone does not contact Manifest. Outcome reports are asynchronous, so a short-lived script may exit before the report is delivered.
-
-## What to expect
-
-- **One retry.** Manifest returns a repair; the SDK sends the corrected request directly to your API.
-- **Original error if healing is unavailable.** A heal call can add up to 60 seconds. If a retry returns an HTTP response, that response reaches your application.
-- **Built-in fetch.** Browser JavaScript, default Axios, `node:http` and separately imported fetch implementations are not intercepted.
-- **Retry semantics still matter.** Use idempotency keys where needed; a repeated request can repeat side effects.
-
-## Privacy
-
-Manifest receives failed request URLs, headers, JSON bodies and error responses. Known credential fields are masked or withheld, but nested secrets, prompts and business data can still be sent. Enable it only for traffic you permit your Manifest server to process and store.
+- **Retries repeat side effects.** Use idempotency keys on non-idempotent calls.
+- **A heal adds up to 60 s** to a failed request. Successful requests are untouched.
+- **Not intercepted:** browsers, HTTP/2, and directly imported `undici`/`node-fetch`.
+- **Privacy.** Failed URLs, headers, JSON or form-urlencoded bodies, and error responses are sent to Manifest. Known credentials are masked, but nested secrets and business data are not. Enable it only for traffic you allow Manifest to process.
 
 ## More
 

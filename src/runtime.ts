@@ -1,9 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { HealApi, warn } from './api.js';
 import { captureRequest, captureResponse } from './capture.js';
-import { isObject, mergeBody, safeHeaders, safeUrl, travelingBody, TRANSPORT_ERROR } from './wire.js';
+import { isObject, mergeBody, safeHeaders, safeUrl, serializeRequestBody, travelingBody, TRANSPORT_ERROR } from './wire.js';
 import type { Capture, Fetch, HealResult, ManifestOptions } from './types.js';
-const eligible = new Set([400, 404, 422]);
+// Only request-side failures are worth capturing. The forbidden statuses are
+// the ones editing the request cannot fix: 401/403 (auth), 402 (billing),
+// 429 (rate limits) and, via the upper bound, every 5xx. Everything else in
+// 4xx is fair game -- 409, 413, 415 and 451 all describe a request the server
+// refused to accept.
+const forbidden = new Set([401, 402, 403, 429]);
+export const eligible = (status: number): boolean =>
+  status >= 400 && status < 500 && !forbidden.has(status);
 export interface ResolvedOptions extends ManifestOptions { key: string; url: string }
 
 export class Runtime {
@@ -21,9 +28,14 @@ export class Runtime {
     const started = performance.now();
     const response = await this.original(request, extras);
     const responseTimeMs = performance.now() - started;
-    if (!eligible.has(response.status) || response.redirected || !this.api.enabled()) return response;
-    return this.repair(request, extras, response, await bodyPromise, responseTimeMs);
+    if (!eligible(response.status) || response.redirected || !this.api.enabled()) return response;
+    return this.handleResponse(request, response, await bodyPromise, responseTimeMs, extras);
   };
+  async handleResponse(request: Request, response: Response, body: { body: unknown; complete: boolean },
+    responseTimeMs: number, extras: RequestInit = {}): Promise<Response> {
+    if (!eligible(response.status) || response.redirected || !this.api.enabled()) return response;
+    return this.repair(request, extras, response, body, responseTimeMs);
+  }
   private async repair(request: Request, extras: RequestInit, original: Response,
     body: { body: unknown; complete: boolean }, responseTimeMs: number): Promise<Response> {
     let response = original;
@@ -91,6 +103,7 @@ function buildRetry(request: Request, originalBody: unknown, result: HealResult 
     const url = new URL(healed.url ?? request.url);
     if (url.origin !== new URL(request.url).origin || url.username || url.password) return null;
     const headers = new Headers(request.headers);
+    const contentType = headers.get('content-type');
     headers.delete('content-length');
     if (healed.headers !== undefined && !isObject(healed.headers)) return null;
     for (const [name, value] of Object.entries(healed.headers ?? {})) {
@@ -99,11 +112,12 @@ function buildRetry(request: Request, originalBody: unknown, result: HealResult 
       else return null;
     }
     const body = Object.hasOwn(healed, 'body') ? mergeBody(originalBody, healed.body) : originalBody;
-    // The app currently repairs JSON bodies. Never invent a replay of a binary
-    // or streamed upload when its original data was not captured as JSON.
+    // Never invent a replay of a binary or streamed upload when its original
+    // data was not captured as a supported structured body.
     if (body === null && !['GET', 'HEAD'].includes(request.method)) return null;
     return new Request(url, {
-      method: request.method, headers, body: ['GET', 'HEAD'].includes(request.method) ? undefined : JSON.stringify(body),
+      method: request.method, headers,
+      body: ['GET', 'HEAD'].includes(request.method) ? undefined : serializeRequestBody(body, contentType),
       signal: request.signal, redirect: request.redirect, credentials: request.credentials,
       cache: request.cache, integrity: request.integrity, keepalive: request.keepalive,
       mode: request.mode, referrer: request.referrer, referrerPolicy: request.referrerPolicy,

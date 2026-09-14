@@ -1,7 +1,7 @@
 {
   "name": "manifest",
   "version": "6.0.0",
-  "description": "Repair eligible failed JSON API calls made with Node fetch.",
+  "description": "Repair eligible failed API calls made by Node HTTP clients.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -39,6 +39,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.31.1",
     "@types/node": "^22.0.0",
+    "axios": "^1.7.0",
     "tsup": "^8.5.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"

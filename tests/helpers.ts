@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { once } from 'node:events';
+import { gzipSync } from 'node:zlib';
 import type { Capture, HealResult, Outcome } from '../src/types.js';
 import { Runtime } from '../src/runtime.js';
 export const ATTEMPT = '33333333-3333-4333-8333-333333333333';
@@ -7,7 +8,11 @@ export const error = { error: { message: 'range of limit should be [1, 100]', pa
 export async function jsonBody(request: IncomingMessage) {
   const chunks = [];
   for await (const chunk of request) chunks.push(Buffer.from(chunk));
-  return JSON.parse(Buffer.concat(chunks).toString() || 'null');
+  const text = Buffer.concat(chunks).toString();
+  if (request.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase() === 'application/x-www-form-urlencoded') {
+    return Object.fromEntries(new URLSearchParams(text));
+  }
+  return JSON.parse(text || 'null');
 }
 export function reply(response: ServerResponse, status: number, body: unknown) {
   response.writeHead(status, { 'content-type': 'application/json' }); response.end(JSON.stringify(body));
@@ -51,6 +56,12 @@ export async function rig() {
   const provider = await server(async (req, res) => {
     const body = await jsonBody(req); const path = req.url!;
     requests.push({ path, body, headers: req.headers });
+    if (path.startsWith('/gzip')) {
+      const status = body?.limit > 100 ? 400 : 200;
+      const payload = status === 400 ? error : { received: body };
+      res.writeHead(status, { 'content-type': 'application/json', 'content-encoding': 'gzip' });
+      res.end(gzipSync(JSON.stringify(payload))); return;
+    }
     if (body?.limit > 100 || path.startsWith('/same')) { reply(res, 400, error); return; }
     if (path.startsWith('/transport')) { res.destroy(); return; }
     if (path.startsWith('/stream')) {

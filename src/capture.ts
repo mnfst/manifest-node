@@ -1,4 +1,4 @@
-import { errorBody, parseJson } from './wire.js';
+import { errorBody, parseRequestBody } from './wire.js';
 export const REQUEST_LIMIT = 262_144;
 export const RESPONSE_LIMIT = 65_536;
 const CAPTURE_MS = 1000;
@@ -32,7 +32,9 @@ export async function captureRequest(request: Request): Promise<{ body: unknown;
   const reader = clone.body!.getReader();
   try {
     const result = await prefix(reader, REQUEST_LIMIT, CAPTURE_MS);
-    return { body: result.complete ? parseJson(result.bytes) : null, complete: result.complete };
+    if (!result.complete) return { body: null, complete: false };
+    const parsed = parseRequestBody(result.bytes, request.headers.get('content-type'));
+    return { body: parsed.body, complete: parsed.valid };
   } finally { void reader.cancel().catch(() => {}); }
 }
 
