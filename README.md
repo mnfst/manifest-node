@@ -48,7 +48,7 @@ Your server must support the [SDK API contract](CONTRACT.md). The local app must
 Call `manifest()` once at startup, before other libraries save a reference to `fetch`. Save this as `example.mjs`, replacing the example endpoint and payload with your own:
 
 ```js
-import { manifest, flush } from 'manifest';
+import { manifest } from 'manifest';
 
 manifest({
   onHeal(event) {
@@ -56,25 +56,21 @@ manifest({
   },
 });
 
-try {
-  const response = await fetch('https://api.example.com/orders', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ limit: 500 }),
-  });
-  console.log(response.status, await response.text());
-} finally {
-  await flush({ timeoutMs: 5000 });
-}
+const response = await fetch('https://api.example.com/orders', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ limit: 500 }),
+});
+console.log(response.status, await response.text());
 ```
 
 Run it with `node example.mjs`. For an API that rejects `limit: 500` and has a matching repair, Manifest can retry with a valid limit. Repairs depend on the API error and available patches.
 
-CommonJS uses `const { manifest, flush } = require('manifest')`.
+CommonJS uses `const { manifest } = require('manifest')`.
 
 ## Check that it works
 
-Send a JSON request that your test API rejects with **400, 404 or 422**. Check the failure in your project's dashboard and the `onHeal` callback for the repair result. A successful request alone does not contact Manifest. `flush()` lets a short script wait for outcome reports before exiting.
+Send a JSON request that your test API rejects with **400, 404 or 422**. Check the failure in your project's dashboard and the `onHeal` callback for the repair result. A successful request alone does not contact Manifest. Outcome reports are asynchronous, so a short-lived script may exit before the report is delivered.
 
 ## What to expect
 

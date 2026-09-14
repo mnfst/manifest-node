@@ -27,8 +27,3 @@ export function manifest(options: ManifestOptions = {}): void {
   globalThis.fetch = runtime.fetch;
   globals[STATE] = runtime;
 }
-
-/** Wait for queued outcome reports within one total deadline. Does not uninstall. */
-export async function flush(options: { timeoutMs?: number } = {}): Promise<void> {
-  await globals[STATE]?.api.flush(options.timeoutMs ?? 5000);
-}

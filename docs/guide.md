@@ -46,14 +46,7 @@ manifest({
 - Automatic retries can repeat side effects. Use APIs with safe retry semantics and caller-managed idempotency keys; these headers are preserved unless explicitly changed by a repair.
 - A disabled project's HTTP 403 response suppresses healing for five minutes.
 
-Outcome reports are best effort, limited to 64 concurrent requests with five-second deadlines. Failures and drops emit Node warnings with code `MNFST`. Before a short-lived process exits, flush reports explicitly:
-
-```ts
-import { flush } from 'manifest';
-await flush({ timeoutMs: 5000 });
-```
-
-`flush` waits within one total deadline; it does not uninstall the SDK or guarantee delivery. Abrupt termination can lose reports.
+Outcome reports are best effort, limited to 64 concurrent requests with five-second deadlines. Failures and drops emit Node warnings with code `MNFST`. Reports are asynchronous: a long-running process delivers them normally, while a short-lived script may exit before delivery. Abrupt termination can lose reports.
 
 ## Data sent to Manifest
 
