@@ -1,0 +1,29 @@
+.changeset/tall-donkeys-shave.md
+  s_32e5f436f83017::t_f6d13fbb558d7c 1-5
+CONTRACT.md
+  s_32e5f436f83017::t_5452dd183f17cd 18
+docs/guide.md
+  s_32e5f436f83017::t_716d4a0ca6fb29 32,39
+src/http.ts
+  s_32e5f436f83017::t_2aa99374d205d5 8,43
+src/runtime.ts
+  s_32e5f436f83017::t_87426ac7ff9ec3 6-13,31,36
+tests/runtime.test.ts
+  s_32e5f436f83017::t_8c8bbe5ad49f7f 170-172,175,181-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ce11269027c0972c5e41b46527ae06875b08387e",
+  "prompts": {},
+  "sessions": {
+    "s_32e5f436f83017": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb72f005-81c4-4b24-93c5-210157d4cb56",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
