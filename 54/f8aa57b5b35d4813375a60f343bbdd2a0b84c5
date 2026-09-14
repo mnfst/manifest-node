@@ -1,0 +1,31 @@
+.changeset/register-entry.md
+  s_f0ae0327db6a73::t_bd87bf12e4a6b2 1-5
+.github/workflows/ci.yml
+  s_f0ae0327db6a73::t_b57485c829ab0e 34
+README.md
+  s_f0ae0327db6a73::t_3f1945f8150780 34-38,62
+docs/guide.md
+  s_f0ae0327db6a73::t_7fa8d12dacfba4 7-15,45,52
+package.json
+  s_f0ae0327db6a73::t_c02bc5f8641426 19-28,41
+src/register.ts
+  s_f0ae0327db6a73::t_a04713b509443c 1-10
+tests/package.test.ts
+  s_f0ae0327db6a73::t_74e3cd3c5513b3 3-4,7,44-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "54f8aa57b5b35d4813375a60f343bbdd2a0b84c5",
+  "prompts": {},
+  "sessions": {
+    "s_f0ae0327db6a73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4df21493-36dc-423b-bcaf-fcfa19f6d776",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
