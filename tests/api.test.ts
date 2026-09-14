@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HealApi } from '../src/api.js';
-import { ATTEMPT, server, reply } from './helpers.js';
+import { ATTEMPT, server, reply, waitFor } from './helpers.js';
 import type { Capture } from '../src/types.js';
 const capture: Capture = { traceId: 'test', request: { method: 'POST', url: 'https://example.com', headers: {}, body: {} }, response: { statusCode: 400, body: 'bad', truncated: false }, responseTimeMs: 1 };
 
@@ -20,23 +20,23 @@ test('rejects oversized heal responses', async t => {
   assert.equal(await api.heal(capture, new AbortController().signal), null);
 });
 
-test('outcome failures emit warnings and flush uses one total deadline', async t => {
+test('outcome failures emit warnings', async t => {
   const warnings: string[] = [];
   t.mock.method(process, 'emitWarning', (message: string) => { warnings.push(message); });
   const service = await server((_req, res) => reply(res, 400, {})); t.after(service.close);
   const api = new HealApi(fetch, 'key', service.url + '/');
   api.report(ATTEMPT, { response: { statusCode: 200 } });
-  await api.flush(); assert.equal(warnings.length, 1);
+  await waitFor(() => warnings.length === 1);
+  assert.equal(warnings.length, 1);
 });
 
-test('outcome concurrency is bounded and flush can return before a stalled report', async t => {
+test('outcome concurrency is bounded', async t => {
   let dropped = 0;
   t.mock.method(process, 'emitWarning', (message: string) => { if (message.includes('capacity')) dropped++; });
   const service = await server(() => {}); t.after(service.close);
   const api = new HealApi(fetch, 'key', service.url + '/', 1000, 100);
   for (let i = 0; i < 70; i++) api.report(ATTEMPT, { response: { statusCode: 200 } });
   assert.equal(dropped, 6);
-  const started = performance.now(); await api.flush(5);
-  assert.ok(performance.now() - started < 500);
-  await api.flush(1000);
+  assert.ok(api.pending.size <= 64);
+  await waitFor(() => api.pending.size === 0, 5000);
 });

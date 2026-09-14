@@ -36,7 +36,7 @@ Call `manifest()` before any library grabs its own reference to `fetch` or `node
 ## See it work
 
 ```js
-import { manifest, flush } from 'manifest';
+import { manifest } from 'manifest';
 
 manifest({
   onHeal(event) {
@@ -49,8 +49,6 @@ const res = await fetch('https://api.example.com/orders', {
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ limit: 500 }), // rejected? Manifest retries with a valid limit
 });
-
-await flush(); // short scripts only: wait for reports before exiting
 ```
 
 ## Good to know

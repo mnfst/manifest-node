@@ -2,12 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import axios from 'axios';
-import { flush, manifest } from '../src/index.js';
+import { manifest } from '../src/index.js';
 import { rig } from './helpers.js';
 
 test('default Axios and node:http requests are healed', async t => {
   const r = await rig();
-  t.after(async () => { await flush(); await r.close(); });
+  t.after(r.close);
   manifest({ key: 'project-key', url: r.api.url });
 
   const successful = await axios.post(r.provider.url + '/ok', { limit: 50 }, { proxy: false });

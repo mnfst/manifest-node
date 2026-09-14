@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { manifest, flush } from '../src/index.js';
-import { server, jsonBody, reply, error } from './helpers.js';
+import { manifest } from '../src/index.js';
+import { server, jsonBody, reply, error, waitFor } from './helpers.js';
 
 test('real app: successful repair, failed retry and transport error evidence', { skip: !process.env.MNFST_TEST_APP_URL }, async t => {
   const base = process.env.MNFST_TEST_APP_URL!;
@@ -39,7 +39,7 @@ test('real app: successful repair, failed retry and transport error evidence', {
     const response = await fetch(prefix + path, { method: 'POST', body: '{"limit":500}' });
     assert.equal(response.status, 400); await response.body?.cancel();
   }
-  await flush({ timeoutMs: 10_000 });
+  await waitFor(() => outcomes.length === 3, 10_000);
   assert.equal(outcomes.length, 3); assert.ok(outcomes.every(item => item.code === 200));
   assert.deepEqual(outcomes.map(item => item.body.status).sort(), ['failed', 'inconclusive', 'succeeded']);
 });

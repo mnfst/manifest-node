@@ -27,6 +27,14 @@ export async function server(handler: (req: IncomingMessage, res: ServerResponse
     instance.closeAllConnections(); await done;
   } };
 }
+export async function waitFor(predicate: () => boolean, timeoutMs = 3000): Promise<void> {
+  const deadline = performance.now() + timeoutMs;
+  while (performance.now() < deadline) {
+    if (predicate()) return;
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+  throw new Error('waitFor timed out');
+}
 export async function rig() {
   const captures: Capture[] = []; const outcomes: Outcome[] = [];
   const requests: { path: string; body: any; headers: IncomingMessage['headers'] }[] = [];
@@ -64,5 +72,5 @@ export async function rig() {
   });
   const runtime = new Runtime({ key: 'project-key', url: api.url + '/' }, fetch);
   return { api, provider, runtime, config, captures, outcomes, requests,
-    close: async () => { await runtime.api.flush(); await Promise.all([api.close(), provider.close()]); } };
+    close: async () => { await waitFor(() => runtime.api.pending.size === 0); await Promise.all([api.close(), provider.close()]); } };
 }

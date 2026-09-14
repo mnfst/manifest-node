@@ -15,7 +15,7 @@ test('ESM and CommonJS share one installation and expose manifest without compat
     import { createRequire } from 'node:module';
     import * as esm from './dist/index.js';
     const cjs = createRequire(import.meta.url)('./dist/index.cjs');
-    assert.deepEqual(Object.keys(esm).sort(), ['VERSION', 'flush', 'manifest']);
+    assert.deepEqual(Object.keys(esm).sort(), ['VERSION', 'manifest']);
     assert.equal(cjs.autofix, undefined);
     const original = globalThis.fetch;
     esm.manifest({key:'test',url:'http://manifest.test'});
@@ -23,7 +23,6 @@ test('ESM and CommonJS share one installation and expose manifest without compat
     assert.notEqual(installed, original);
     cjs.manifest({key:'test',url:'http://manifest.test'});
     assert.equal(globalThis.fetch, installed);
-    await esm.flush(); await cjs.flush();
   `;
   assert.equal(execFileSync(process.execPath, ['--input-type=module', '-e', script], { encoding: 'utf8' }), '');
 });

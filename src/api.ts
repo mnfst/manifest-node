@@ -6,7 +6,8 @@ export const warn = (message: string) => process.emitWarning(message, { code: 'M
 export class HealApi {
   private disabledUntil = 0;
   private inFlight = 0;
-  private pending = new Set<Promise<void>>();
+  /** @internal In-flight outcome reports; exposed so tests can await delivery. */
+  readonly pending = new Set<Promise<void>>();
   constructor(private rawFetch: Fetch, private key: string, private url: string,
     private timeoutMs = 60_000, private reportTimeoutMs = 5000) {}
   enabled() { return performance.now() >= this.disabledUntil; }
@@ -63,12 +64,5 @@ export class HealApi {
       if (!response.ok) warn('Outcome report rejected; attempt remains unconfirmed');
     } catch { warn('Outcome report failed; attempt remains unconfirmed'); }
     finally { clearTimeout(timer); }
-  }
-  async flush(timeoutMs = 5000): Promise<void> {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      await Promise.race([Promise.allSettled([...this.pending]),
-        new Promise<void>(resolve => { timer = setTimeout(resolve, Math.max(0, timeoutMs)); })]);
-    } finally { clearTimeout(timer); }
   }
 }

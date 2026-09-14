@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rig } from './helpers.js';
+import { rig, waitFor } from './helpers.js';
 import { Runtime } from '../src/runtime.js';
 
 test('repairs JSON, masks credentials, preserves withheld fields and reports actual outcome', async t => {
@@ -16,7 +16,7 @@ test('repairs JSON, masks credentials, preserves withheld fields and reports act
   assert.ok(!r.captures[0]!.request.url.includes('hidden'));
   assert.equal(r.requests[1]!.headers.authorization, 'Bearer secret');
   assert.equal(r.requests[1]!.headers['idempotency-key'], 'same-key');
-  await r.runtime.api.flush(); assert.deepEqual(r.outcomes, [{ response: { statusCode: 200 } }]);
+  await waitFor(() => r.runtime.api.pending.size === 0); assert.deepEqual(r.outcomes, [{ response: { statusCode: 200 } }]);
 });
 
 test('repairs fetch form-urlencoded bodies without changing their encoding', async t => {
@@ -91,7 +91,7 @@ test('successful original calls never contact Manifest', async t => {
 test('failed retries send raw error evidence and do not loop', async t => {
   const r = await rig(); t.after(r.close);
   const response = await r.runtime.fetch(r.provider.url + '/same', { method: 'POST', body: '{"limit":500}' });
-  const body = await response.json(); await r.runtime.api.flush();
+  const body = await response.json(); await waitFor(() => r.runtime.api.pending.size === 0);
   assert.equal(response.status, 400); assert.equal(r.requests.length, 2);
   assert.deepEqual(r.outcomes, [{ response: { statusCode: 400, body, truncated: false } }]);
 });
@@ -100,7 +100,7 @@ test('transport failure returns original error and records inconclusive evidence
   const r = await rig(); t.after(r.close);
   const response = await r.runtime.fetch(r.provider.url + '/transport', { method: 'POST', body: '{"limit":500}' });
   assert.equal(response.status, 400); assert.ok((await response.json()).error);
-  await r.runtime.api.flush();
+  await waitFor(() => r.runtime.api.pending.size === 0);
   assert.equal('failure' in r.outcomes[0]! && r.outcomes[0].failure.kind, 'transport_error');
 });
 
@@ -120,7 +120,7 @@ test('cross-origin repairs are refused and reported as not_attempted', async t =
   const r = await rig(); t.after(r.close);
   r.config.result.healedRequest = { url: 'https://other.example/steal', body: { limit: 100 } };
   const response = await r.runtime.fetch(r.provider.url + '/repair', { method: 'POST', body: '{"limit":500}' });
-  assert.equal(response.status, 400); await response.body?.cancel(); await r.runtime.api.flush();
+  assert.equal(response.status, 400);   await response.body?.cancel(); await waitFor(() => r.runtime.api.pending.size === 0);
   assert.equal(r.requests.length, 1);
   assert.equal('failure' in r.outcomes[0]! && r.outcomes[0].failure.kind, 'not_attempted');
 });
@@ -164,7 +164,7 @@ test('does not retry with incomplete capture evidence', async () => {
   const runtime = new Runtime({ key: 'k', url: 'http://manifest/' }, raw);
   const response = await runtime.fetch('http://provider/repair', { method: 'POST', body: '{"limit":500}' });
   assert.equal((await response.text()).length, 100_000);
-  await runtime.api.flush(); assert.equal(upstreamCalls, 1); assert.equal(reports, 1);
+  await waitFor(() => runtime.api.pending.size === 0); assert.equal(upstreamCalls, 1); assert.equal(reports, 1);
 });
 
 // Forbidden: editing the request cannot fix auth, billing, rate limits or a
@@ -194,7 +194,7 @@ test('no_patch returns the original error bytes and opens no outcome report', as
   const r = await rig(); t.after(r.close); r.config.result = { status: 'no_patch' };
   const response = await r.runtime.fetch(r.provider.url + '/repair', { method: 'POST', body: '{"limit":500}' });
   assert.equal(response.status, 400); assert.ok((await response.json()).error);
-  await r.runtime.api.flush(); assert.equal(r.requests.length, 1); assert.equal(r.outcomes.length, 0);
+  await waitFor(() => r.runtime.api.pending.size === 0); assert.equal(r.requests.length, 1); assert.equal(r.outcomes.length, 0);
 });
 
 test('a real streaming upload is sent intact and can be healed once fully captured', async t => {

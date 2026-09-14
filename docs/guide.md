@@ -12,7 +12,7 @@ Call `manifest()` once at startup, before other libraries save a reference to `f
 | `url` | `MNFST_URL` | `https://api.manifest.build` |
 | `onHeal` | — | Optional local callback |
 
-Explicit options take precedence. Reconfiguration requires a restart. ESM and CommonJS imports share one process-wide installation; CommonJS uses `const { manifest, flush } = require('manifest')`.
+Explicit options take precedence. Reconfiguration requires a restart. ESM and CommonJS imports share one process-wide installation; CommonJS uses `const { manifest } = require('manifest')`.
 
 To target a local Manifest app instead of `https://api.manifest.build`, set `MNFST_URL` (for example `http://127.0.0.1:5310`). The app must already be running and support the [SDK API contract](../CONTRACT.md).
 
@@ -29,7 +29,7 @@ manifest({
 
 ## Verifying the installation
 
-Send a JSON request that your test API rejects with 400, 404, 422 or any other request-side 4xx. The failure appears in your project's dashboard, and the `onHeal` callback reports the repair result. A successful request alone does not contact Manifest. In short-lived scripts, call `flush()` before exiting so outcome reports are delivered.
+Send a JSON request that your test API rejects with 400, 404, 422 or any other request-side 4xx. The failure appears in your project's dashboard, and the `onHeal` callback reports the repair result. A successful request alone does not contact Manifest. Outcome reports are asynchronous, so a short-lived script may exit before the report is delivered.
 
 ## Supported traffic
 
@@ -54,14 +54,7 @@ Send a JSON request that your test API rejects with 400, 404, 422 or any other r
 - Automatic retries can repeat side effects. Use APIs with safe retry semantics and caller-managed idempotency keys; these headers are preserved unless explicitly changed by a repair.
 - A disabled project's HTTP 403 response suppresses healing for five minutes.
 
-Outcome reports are best effort, limited to 64 concurrent requests with five-second deadlines. Failures and drops emit Node warnings with code `MNFST`. Before a short-lived process exits, flush reports explicitly:
-
-```ts
-import { flush } from 'manifest';
-await flush({ timeoutMs: 5000 });
-```
-
-`flush` waits within one total deadline; it does not uninstall the SDK or guarantee delivery. Abrupt termination can lose reports.
+Outcome reports are best effort, limited to 64 concurrent requests with five-second deadlines. Failures and drops emit Node warnings with code `MNFST`. Reports are asynchronous: a long-running process delivers them normally, while a short-lived script may exit before delivery. Abrupt termination can lose reports.
 
 ## Data sent to Manifest
 
