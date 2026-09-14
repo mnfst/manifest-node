@@ -31,7 +31,11 @@ Works with built-in `fetch`, `node:http`, `node:https` and Axios, for JSON and f
 export MNFST_KEY='your-project-key'
 ```
 
-Call `manifest()` before any library grabs its own reference to `fetch` or `node:http`.
+Call `manifest()` before any library grabs its own reference to `fetch` or `node:http`. To install before any of your modules run, preload it instead:
+
+```sh
+node --import manifest/register app.js
+```
 
 ## See it work
 
@@ -55,7 +59,7 @@ const res = await fetch('https://api.example.com/orders', {
 
 - **Retries repeat side effects.** Use idempotency keys on non-idempotent calls.
 - **A heal adds up to 60 s** to a failed request. Successful requests are untouched.
-- **Not intercepted:** browsers, HTTP/2, and directly imported `undici`/`node-fetch`.
+- **Not intercepted:** browsers, HTTP/2, and directly imported `undici`.
 - **Privacy.** Failed URLs, headers, JSON or form-urlencoded bodies, and error responses are sent to Manifest. Known credentials are masked, but nested secrets and business data are not. Enable it only for traffic you allow Manifest to process.
 
 ## More

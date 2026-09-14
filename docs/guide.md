@@ -4,7 +4,15 @@
 
 ## Configuration
 
-Call `manifest()` once at startup, before other libraries save a reference to `fetch`, `node:http` or `node:https`.
+Call `manifest()` once at startup, before other libraries save a reference to `fetch`, `node:http` or `node:https`. Some clients, the OpenAI and Anthropic SDKs among them, read global `fetch` once when constructed, and a client built at import time runs before any `manifest()` call in your code. Preload the register entry to install first:
+
+```sh
+node --import manifest/register app.js
+# or, for a process you do not launch yourself:
+NODE_OPTIONS="--import manifest/register" some-agent
+```
+
+It reads `MNFST_KEY` and `MNFST_URL` and takes no options.
 
 | Option | Environment | Default |
 | --- | --- | --- |
@@ -34,14 +42,14 @@ Send a JSON request that your test API rejects with 400, 404, 422 or any other r
 ## Supported traffic
 
 - Built-in global `fetch`, including `Request` inputs and libraries that call global fetch after installation.
-- `node:http` and `node:https`, including Axios with its default HTTP adapter.
+- `node:http` and `node:https`, including Axios with its default HTTP adapter and `node-fetch`.
 - Failures after automatic redirects pass through: the original method/body may not describe the failing hop.
 - Captures any 4xx except 401, 402, 403 and 429. Those four, every 5xx, and network failures before an HTTP response pass through: authentication, billing, rate limiting and server faults are not things editing the request can fix.
 - JSON and `application/x-www-form-urlencoded` APIs, including nested form fields. No provider-specific request format is required.
 - One retry per capture. Same-origin URL and header repairs are supported by the SDK; the current app returns structured body repairs.
 - Successful calls and successful retries remain streamed. Failed responses retain their bytes, status, headers, URL and redirect metadata.
 
-**Not covered:** browser JavaScript, HTTP/2, directly imported `undici.fetch`/`node-fetch`, and transport references saved before initialization. Those transports need separate integration. This SDK does not claim to intercept every Node HTTP client.
+**Not covered:** browser JavaScript, HTTP/2, directly imported `undici.fetch`, and `fetch` references saved before initialization (see `manifest/register` above). Those transports need separate integration. This SDK does not claim to intercept every Node HTTP client.
 
 ## Limits and failure behavior
 
