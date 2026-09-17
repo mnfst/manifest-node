@@ -1,0 +1,19 @@
+tests/api.test.ts
+  s_440e3eb4da6e01::t_04907d4f2dc3b4 3,43-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3356c372b23895ec4cb7bfebcb6969789746b323",
+  "prompts": {},
+  "sessions": {
+    "s_440e3eb4da6e01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "958d9903-8750-41df-8c05-f78765c3f03b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
