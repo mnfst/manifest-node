@@ -1,0 +1,40 @@
+tests/cli.test.ts
+  s_7df7c17e5535d2::t_5e2d08ca8eea50 1-182
+src/cli.ts
+  s_7df7c17e5535d2::t_dac60cf6ddecf8 316,324,336-345
+  s_7df7c17e5535d2::t_7a46ded184ce82 272
+  s_7df7c17e5535d2::t_2b67facd5f9101 1-271,273-315,317-323,325-335,346-452
+src/bin.ts
+  s_7df7c17e5535d2::t_89444e68fe814f 1-12
+README.md
+  s_7df7c17e5535d2::t_b4f17a95f54224 65-72
+package.json
+  s_7df7c17e5535d2::t_443bc511fd4fe0 44
+  s_7df7c17e5535d2::t_39ca49494fa92c 9-11
+.changeset/doctor-command.md
+  s_7df7c17e5535d2::t_f5abd32be471db 1-5
+.github/workflows/ci.yml
+  s_7df7c17e5535d2::t_97977d8a3797cc 34
+CONTRACT.md
+  s_7df7c17e5535d2::t_ec080839150a89 5-16
+tests/package.test.ts
+  s_7df7c17e5535d2::t_bb3d8a535cf2ff 14-18
+docs/guide.md
+  s_7df7c17e5535d2::t_c79a97eb9caea8 72-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2e2dab2fcd99f4687515b668ff8e456cd1adcc21",
+  "prompts": {},
+  "sessions": {
+    "s_7df7c17e5535d2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4f2293b0ffeEgHZ7K2ztcomet",
+        "model": "auto"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
