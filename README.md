@@ -62,6 +62,14 @@ node -r manifest/register app.js
 
 Self-healing is enabled by default in your project settings.
 
+Verify the install from your project directory:
+
+```sh
+npx manifest doctor
+```
+
+It resolves the installed SDK version, masks and validates the key against the handshake endpoint, checks that Manifest loads before your app, and prints the runtime coverage. Add `--send-test` to send one synthetic failing request and flip the dashboard's connect screen right away.
+
 ## Try it
 
 Send a request that would normally fail. Manifest catches it, repairs it, and retries:

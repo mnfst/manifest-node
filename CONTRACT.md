@@ -2,6 +2,18 @@
 
 The SDK talks to the configured Manifest API using `Authorization: Bearer <project key>` and `User-Agent: mnfst-node/<version>`.
 
+## Handshake
+
+`POST /v1/hello` announces an install — `{"runtime":"node-22.0.0"}` — authorized with the same bearer key. A `200` confirms the key; `401`, or a `403` whose body is not `{"error":"project_disabled"}`, rejects it. The `200` body may carry project and activity context, all optional:
+
+```json
+{"project": {"name": "Find Concierge"}, "requests": 12}
+```
+
+`manifest doctor` reads `project` (also accepting `projectName`, `project_name` or a bare `name`) and `requests` (also accepting `requestCount`, `requestsCount`, `requests_count`, `request_count`, or an object with `total`) to print the project and to warn when no request has arrived yet. Missing fields simply hide those lines.
+
+A capture may carry a top-level `"synthetic": true`, which `manifest doctor --send-test` sets. Synthetic captures exist only to prove the pipeline end to end and must be excluded from statistics.
+
 ## Capture
 
 `POST /v1/heal` receives:
