@@ -13,7 +13,7 @@ export class HealApi {
   enabled() { return performance.now() >= this.disabledUntil; }
   private headers() {
     return { authorization: `Bearer ${this.key}`, 'content-type': 'application/json',
-      'user-agent': `mnfst-node/${VERSION}`, 'x-mnfst-source': 'node-sdk' };
+      'user-agent': `mnfst-node/${VERSION}` };
   }
   async heal(capture: Capture, signal: AbortSignal): Promise<HealResult | null> {
     if (!this.enabled() || this.inFlight >= 8) return null;
