@@ -21,7 +21,7 @@ A successful heal response may contain `status: patched|unverified`, `healAttemp
 
 ## Apply
 
-A healed URL replaces the URL only within the original origin. Headers set or replace case-insensitively; null removes a header. Content length is recalculated. Objects merge using the server's healed body as the authoritative copy of fields sent to the server; withheld local credential fields are restored. Non-object JSON replaces the body. Form-urlencoded retries use the original encoding and are re-encoded from the parsed structure, so repeated keys return as indexed keys; a non-object healed body is not retried for them. Incomplete or malformed request captures and incomplete error captures are not retried.
+A healed URL replaces the URL only within the original origin. Headers set or replace case-insensitively; null removes a header. Content length is recalculated. Objects merge using the server's healed body as the authoritative copy of fields sent to the server; withheld local credential fields are restored. Non-object JSON replaces the body. Form-urlencoded retries use the original encoding and are re-encoded from the parsed structure, so repeated keys return as indexed keys; a non-object healed body is not retried for them. A healed body that merges to nothing is sent as no body at all: GET, HEAD, DELETE and OPTIONS retry bodyless, and any other method is not retried. GET and HEAD never carry a body on a retry. Incomplete or malformed request captures and incomplete error captures are not retried.
 
 Each captured failure permits one retry. A retry response, including another failure, is returned to the caller. A transport failure returns the original response. Successful response streams are not eagerly consumed.
 

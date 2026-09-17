@@ -9,6 +9,11 @@ import type { Capture, Fetch, HealResult, ManifestOptions } from './types.js';
 // 4xx is fair game -- 409, 413, 415 and 451 all describe a request the server
 // refused to accept.
 const forbidden = new Set([401, 402, 403, 429]);
+// A patch that merges to nothing still retries on these, bodyless; any other
+// method needs a body to replay. GET and HEAD may never carry one at all --
+// fetch rejects it, and CDNs answer 403 to a bodied GET.
+const bodyless = ['GET', 'HEAD', 'DELETE', 'OPTIONS'];
+const neverBodied = (method: string) => method === 'GET' || method === 'HEAD';
 export const eligible = (status: number): boolean =>
   status >= 400 && status < 500 && !forbidden.has(status);
 export interface ResolvedOptions extends ManifestOptions { key: string; url: string }
@@ -114,10 +119,10 @@ function buildRetry(request: Request, originalBody: unknown, result: HealResult 
     const body = Object.hasOwn(healed, 'body') ? mergeBody(originalBody, healed.body) : originalBody;
     // Never invent a replay of a binary or streamed upload when its original
     // data was not captured as a supported structured body.
-    if (body === null && !['GET', 'HEAD'].includes(request.method)) return null;
+    if (body === null && !bodyless.includes(request.method)) return null;
     return new Request(url, {
       method: request.method, headers,
-      body: ['GET', 'HEAD'].includes(request.method) ? undefined : serializeRequestBody(body, contentType),
+      body: body === null || neverBodied(request.method) ? undefined : serializeRequestBody(body, contentType),
       signal: request.signal, redirect: request.redirect, credentials: request.credentials,
       cache: request.cache, integrity: request.integrity, keepalive: request.keepalive,
       mode: request.mode, referrer: request.referrer, referrerPolicy: request.referrerPolicy,
