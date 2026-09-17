@@ -92,7 +92,7 @@ Runtime coverage
 
 `doctor` resolves the installed version, masks the key (it is never printed in full), and makes one round trip to the handshake endpoint — the only check that tells a good key from a typo'd or revoked one, which both look like silence otherwise. A non-zero exit code means a check failed.
 
-`doctor --send-test` sends one deliberately failing, synthetic capture so the dashboard's connect screen flips immediately instead of asking you to manufacture a failure. It is explicit, human-run, and tagged `synthetic` so it does not count in the statistics.
+The key check is a probe: it proves the key works without registering an install, so a diagnostic run never makes the dashboard claim your app is connected. Only a real boot does that.
 
 You can also verify by hand: send a JSON request that your test API rejects with 400, 404, 422 or any other request-side 4xx. The failure appears in your project's dashboard, and the `onHeal` callback reports the repair result. A successful request alone does not contact Manifest. Outcome reports are asynchronous, so a short-lived script may exit before the report is delivered.
 
