@@ -1,0 +1,21 @@
+.changeset/drop-source-header.md
+  s_440e3eb4da6e01::t_157616b6cc1c31 1-5
+src/api.ts
+  s_440e3eb4da6e01::t_6438dba2fa1d33 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ceb0304f9276369e432457d22776f183023cc8ee",
+  "prompts": {},
+  "sessions": {
+    "s_440e3eb4da6e01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "958d9903-8750-41df-8c05-f78765c3f03b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
