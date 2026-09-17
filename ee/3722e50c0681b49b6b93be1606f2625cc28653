@@ -1,0 +1,25 @@
+.changeset/bodyless-retry-methods.md
+  s_440e3eb4da6e01::t_faceae12a39309 1-5
+CONTRACT.md
+  s_440e3eb4da6e01::t_438777398986c1 24
+src/runtime.ts
+  s_440e3eb4da6e01::t_db50cc0bbd32cc 12-16,122,125
+tests/runtime.test.ts
+  s_440e3eb4da6e01::t_605c7463e7b85c 251-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ee3722e50c0681b49b6b93be1606f2625cc28653",
+  "prompts": {},
+  "sessions": {
+    "s_440e3eb4da6e01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "958d9903-8750-41df-8c05-f78765c3f03b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
