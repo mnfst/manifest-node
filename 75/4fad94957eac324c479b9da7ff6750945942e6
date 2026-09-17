@@ -1,0 +1,26 @@
+docs/guide.md
+  s_50ac3ccad767e1::t_dcd1041731798d 32-63,65-69
+  s_50ac3ccad767e1::t_6f94f73e58456c 7
+  s_50ac3ccad767e1::t_fb85b786f99a1f 91
+  s_50ac3ccad767e1::t_8f4bf89cc8325b 64
+README.md
+  s_50ac3ccad767e1::t_b2f6fc5b81c689 60
+src/register.ts
+  s_50ac3ccad767e1::t_28b9b9aa71d464 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "754fad94957eac324c479b9da7ff6750945942e6",
+  "prompts": {},
+  "sessions": {
+    "s_50ac3ccad767e1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4f4bf7efffeav9D6CcNFphZfB",
+        "model": "auto"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
