@@ -69,7 +69,29 @@ Not supported. The SDK needs `node:crypto`, `node:http` and `node:https`, none o
 
 ## Verifying the installation
 
-Send a JSON request that your test API rejects with 400, 404, 422 or any other request-side 4xx. The failure appears in your project's dashboard, and the `onHeal` callback reports the repair result. A successful request alone does not contact Manifest. Outcome reports are asynchronous, so a short-lived script may exit before the report is delivered.
+Run the doctor from the project directory. It checks the install without guessing from source:
+
+```sh
+npx manifest doctor
+```
+
+```
+  ✅ SDK installed         manifest 7.0.0
+  ✅ MNFST_KEY set         mnfst_proj_…DZDw
+  ✅ Key valid             project "Find Concierge"
+  ✅ Preload active        a script preloads manifest/register
+  ⚠️ Requests received     no requests received yet
+
+Runtime coverage
+  Node.js runtime   fetch, http.request, https.request, http.get are patched
+  Edge runtime      not supported — middleware.ts and Edge route handlers are never covered
+```
+
+`doctor` resolves the installed version, masks the key (it is never printed in full), and makes one round trip to the handshake endpoint — the only check that tells a good key from a typo'd or revoked one, which both look like silence otherwise. A non-zero exit code means a check failed.
+
+`doctor --send-test` sends one deliberately failing, synthetic capture so the dashboard's connect screen flips immediately instead of asking you to manufacture a failure. It is explicit, human-run, and tagged `synthetic` so it does not count in the statistics.
+
+You can also verify by hand: send a JSON request that your test API rejects with 400, 404, 422 or any other request-side 4xx. The failure appears in your project's dashboard, and the `onHeal` callback reports the repair result. A successful request alone does not contact Manifest. Outcome reports are asynchronous, so a short-lived script may exit before the report is delivered.
 
 ## Supported traffic
 

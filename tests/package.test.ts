@@ -11,6 +11,11 @@ test('runtime version matches the package version', () => {
   assert.equal(VERSION, packageJson.version);
 });
 
+test('the built CLI reports the SDK version', () => {
+  const stdout = execFileSync(process.execPath, ['dist/bin.js', '--version'], { encoding: 'utf8' });
+  assert.equal(stdout.trim(), VERSION);
+});
+
 test('ESM and CommonJS share one installation and expose manifest without compatibility aliases', () => {
   const script = `
     import assert from 'node:assert/strict';
