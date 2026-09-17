@@ -57,7 +57,7 @@ export MNFST_KEY='your-project-key'
 Call `manifest()` before any library grabs its own reference to `fetch` or `node:http`. To install before any of your modules run, preload it instead:
 
 ```sh
-node --import manifest/register app.js
+node -r manifest/register app.js
 ```
 
 Self-healing is enabled by default in your project settings.

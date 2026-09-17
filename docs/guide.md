@@ -4,13 +4,7 @@
 
 ## Configuration
 
-Call `manifest()` once at startup, before other libraries save a reference to `fetch`, `node:http` or `node:https`. Some clients, the OpenAI and Anthropic SDKs among them, read global `fetch` once when constructed, and a client built at import time runs before any `manifest()` call in your code. Preload the register entry to install first:
-
-```sh
-node --import manifest/register app.js
-# or, for a process you do not launch yourself:
-NODE_OPTIONS="--import manifest/register" some-agent
-```
+Call `manifest()` once at startup, before other libraries save a reference to `fetch`, `node:http` or `node:https`. Where a client is built at import time and would capture the original `fetch` first, [preload the register entry](#preloading) instead.
 
 It reads `MNFST_KEY` and `MNFST_URL` and takes no options.
 
@@ -35,6 +29,44 @@ manifest({
 
 `onHeal` receives `url`, `statusCode`, `healStatus`, `replayStatusCode`, `healMs` and optional `operations`. URLs have known credential query fields masked. Callback errors do not fail application requests.
 
+## Preloading
+
+`manifest()` covers clients that read `fetch` after it runs. Some clients, the OpenAI and Anthropic SDKs among them, read global `fetch` once when constructed, and a client built at import time runs before any `manifest()` call in your code. Preload the register entry to install first:
+
+```sh
+node -r manifest/register app.js
+```
+
+`-r` is CommonJS `require`; `--import manifest/register` is the ESM loader form. Both resolve the same entry and install before the app module evaluates, in CJS and ESM apps alike. Prefer `-r` where you launch the process: it takes no quoting and works on Windows.
+
+For a process you do not launch yourself — a framework CLI such as `nest start`, or a host dashboard that owns the command — pass it through `NODE_OPTIONS`:
+
+```sh
+NODE_OPTIONS="--require manifest/register" nest start
+```
+
+The register entry reads `MNFST_KEY` **once, at load**. Setting or changing the key without restarting the process does nothing. Without a key it warns once, leaves `fetch`, `node:http` and `node:https` untouched, and the app runs to exit 0.
+
+### Next.js
+
+Serverless deployments such as Vercel have no start command, so neither preload flag applies. Install from `instrumentation.ts`:
+
+```ts
+// src/instrumentation.ts
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { manifest } = await import('manifest');
+    manifest();
+  }
+}
+```
+
+Guard inside an `if` block, as above, rather than returning early, and import `manifest` dynamically. A top-level import is resolved for both runtimes, and the Edge build fails with `Can't resolve 'http'`. On Next.js 14, set `experimental.instrumentationHook: true` in `next.config.js`.
+
+### Edge runtime
+
+Not supported. The SDK needs `node:crypto`, `node:http` and `node:https`, none of which exist on Edge. Next.js `middleware.ts` always runs on Edge and is therefore never covered.
+
 ## Verifying the installation
 
 Send a JSON request that your test API rejects with 400, 404, 422 or any other request-side 4xx. The failure appears in your project's dashboard, and the `onHeal` callback reports the repair result. A successful request alone does not contact Manifest. Outcome reports are asynchronous, so a short-lived script may exit before the report is delivered.
@@ -56,7 +88,7 @@ Send a JSON request that your test API rejects with 400, 404, 422 or any other r
 - Request capture is bounded to 256 KiB and structure depth 64. Fetch uploads are teed for at most one second; Node HTTP writes are copied as they are sent. Oversized, malformed or slow fetch uploads travel as `null` and are not retried.
 - Form-urlencoded retries are re-encoded from the parsed structure, so repeated keys such as `expand=a&expand=b` return as `expand[0]=a&expand[1]=b`. Servers that reject indexed keys see the retry fail like any other unsuccessful repair.
 - Error capture reads at most 64 KiB plus one transport chunk, within one second. The prefix and remaining stream are preserved for the caller. Incomplete errors are reported without retry. One unusually large transport chunk can exceed that memory estimate.
-- The Manifest heal call has a 60-second deadline and at most eight concurrent requests. Capacity exhaustion and service errors return the original API error response.
+- The Manifest heal call has a 60-second deadline and at most eight concurrent requests. Capacity exhaustion and service errors return the original API error response. If the configured server is unreachable, the heal attempt fails in about 10 ms and the app's original error response surfaces unchanged.
 - Caller abort signals apply during healing and retry; cancellation remains observable to the caller.
 - A transport failure on retry returns the original error response and reports inconclusive evidence. If the retry returns another HTTP error, its raw body is reported so the app can distinguish recurrence from a new issue.
 - Automatic retries can repeat side effects. Use APIs with safe retry semantics and caller-managed idempotency keys; these headers are preserved unless explicitly changed by a repair.
