@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { HealApi } from '../src/api.js';
+import { HealApi, VERSION } from '../src/api.js';
 import { ATTEMPT, server, reply, waitFor } from './helpers.js';
 import type { Capture } from '../src/types.js';
 const capture: Capture = { traceId: 'test', request: { method: 'POST', url: 'https://example.com', headers: {}, body: {} }, response: { statusCode: 400, body: 'bad', truncated: false }, responseTimeMs: 1 };
@@ -39,4 +39,26 @@ test('outcome concurrency is bounded', async t => {
   assert.equal(dropped, 6);
   assert.ok(api.pending.size <= 64);
   await waitFor(() => api.pending.size === 0, 5000);
+});
+
+// The app derives a request's `sdk`/`sdk_version` from this header and nothing else,
+// falling back to the captured exchange's own User-Agent — which never matches — so a
+// dropped header costs attribution silently rather than failing a call.
+test('heal requests identify the SDK by User-Agent', async t => {
+  let userAgent: string | undefined;
+  const service = await server((req, res) => { userAgent = req.headers['user-agent']; reply(res, 200, { status: 'unverified', healAttemptId: ATTEMPT }); });
+  t.after(service.close);
+  const api = new HealApi(fetch, 'key', service.url + '/');
+  await api.heal(capture, new AbortController().signal);
+  assert.equal(userAgent, `mnfst-node/${VERSION}`);
+});
+
+test('outcome reports identify the SDK by User-Agent', async t => {
+  let userAgent: string | undefined;
+  const service = await server((req, res) => { userAgent = req.headers['user-agent']; reply(res, 200, { status: 'recorded' }); });
+  t.after(service.close);
+  const api = new HealApi(fetch, 'key', service.url + '/');
+  api.report(ATTEMPT, { response: { statusCode: 200 } });
+  await waitFor(() => api.pending.size === 0);
+  assert.equal(userAgent, `mnfst-node/${VERSION}`);
 });
