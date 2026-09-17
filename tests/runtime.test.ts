@@ -248,3 +248,16 @@ test('upstream latency excludes time spent finishing SDK body capture', async t 
   const response = await runtime.fetch('http://provider', { method: 'POST', body: stream, duplex: 'half' } as RequestInit);
   await response.body?.cancel(); assert.equal(elapsed, 0);
 });
+
+// A query-only patch comes back with `body: null`. DELETE and OPTIONS carry no
+// body of their own here, so the retry goes out bodyless instead of being dropped.
+test('retries a bodyless DELETE when the patch carries no body', async t => {
+  const r = await rig(); t.after(r.close);
+  r.config.result.healedRequest = { url: r.provider.url + '/items/1?force=true', body: null };
+  const response = await r.runtime.fetch(r.provider.url + '/same/items/1', { method: 'DELETE' });
+  await response.body?.cancel();
+  assert.equal(r.requests.length, 2);
+  assert.equal(r.requests[1]!.path, '/items/1?force=true');
+  assert.equal(r.requests[1]!.headers['content-length'], undefined);
+  assert.equal(r.requests[1]!.body, null);
+});
