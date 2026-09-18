@@ -32,6 +32,18 @@ Manifest is a self-healing layer that fixes and retries failed API requests on t
 
 ## Get started
 
+### Start with your agent
+
+```
+"Install Manifest in this app: https://app-staging.manifest.build/prompt-node.md"
+```
+
+[Read the prompt →](https://app-staging.manifest.build/prompt-node.md)
+
+The prompt adds the preload to your start command and stops to let you paste your key.
+
+### Start with code
+
 ```sh
 npm install manifest
 ```
