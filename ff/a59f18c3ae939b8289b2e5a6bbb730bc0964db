@@ -1,0 +1,25 @@
+.changeset/restore-query-credentials.md
+  s_18608139a74245::t_6abada91a56088 1-5
+src/runtime.ts
+  s_18608139a74245::t_8147738759c4b8 4,103-122,130,137-139
+src/wire.ts
+  s_18608139a74245::t_7c5ff1afc1d00c 7-10,15,21
+tests/runtime.test.ts
+  s_18608139a74245::t_07b5684ceb4324 153-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ffa59f18c3ae939b8289b2e5a6bbb730bc0964db",
+  "prompts": {},
+  "sessions": {
+    "s_18608139a74245": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8507883f-dfaf-424a-a038-9a2d0e3c21d7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
