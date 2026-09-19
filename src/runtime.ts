@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { HealApi, warn } from './api.js';
 import { captureRequest, captureResponse } from './capture.js';
-import { isObject, mergeBody, safeHeaders, safeUrl, serializeRequestBody, travelingBody, TRANSPORT_ERROR } from './wire.js';
+import { isObject, isSecretName, MASK, mergeBody, safeHeaders, safeUrl, serializeRequestBody, travelingBody, TRANSPORT_ERROR } from './wire.js';
 import type { Capture, Fetch, HealResult, ManifestOptions } from './types.js';
 // Only request-side failures are worth capturing. The forbidden statuses are
 // the ones editing the request cannot fix: 401/403 (auth), 402 (billing),
@@ -100,6 +100,26 @@ export class Runtime {
   }
 }
 
+/**
+ * The SDK masks credential query parameters on the wire, and the server drops
+ * credentials from the URL it serves (or echoes the mask for a name it does
+ * not classify), so the served URL never carries the caller's key. Put the
+ * caller's own values back unless the server healed that parameter to a real
+ * value; a mask with nothing behind it is dropped.
+ */
+function restoreQueryCredentials(url: URL, original: URL): void {
+  for (const name of new Set(original.searchParams.keys())) {
+    const served = url.searchParams.getAll(name);
+    if (isSecretName(name) && (served.length === 0 || served.includes(MASK))) {
+      url.searchParams.delete(name);
+      for (const value of original.searchParams.getAll(name)) url.searchParams.append(name, value);
+    }
+  }
+  for (const name of new Set(url.searchParams.keys())) {
+    if (url.searchParams.getAll(name).includes(MASK)) url.searchParams.delete(name);
+  }
+}
+
 function buildRetry(request: Request, originalBody: unknown, result: HealResult | null): Request | null {
   if (!result || !['patched', 'unverified'].includes(result.status) || !isObject(result.healedRequest)) return null;
   const healed = result.healedRequest;
@@ -107,13 +127,16 @@ function buildRetry(request: Request, originalBody: unknown, result: HealResult 
   try {
     const url = new URL(healed.url ?? request.url);
     if (url.origin !== new URL(request.url).origin || url.username || url.password) return null;
+    restoreQueryCredentials(url, new URL(request.url));
     const headers = new Headers(request.headers);
     const contentType = headers.get('content-type');
     headers.delete('content-length');
     if (healed.headers !== undefined && !isObject(healed.headers)) return null;
     for (const [name, value] of Object.entries(healed.headers ?? {})) {
       if (value === null) headers.delete(name);
-      else if (typeof value === 'string') headers.set(name, value);
+      // The server may echo the SDK's own mask for a name it does not classify;
+      // a mask is not a credential, so the caller's header stays as sent.
+      else if (typeof value === 'string') { if (value !== MASK) headers.set(name, value); }
       else return null;
     }
     const body = Object.hasOwn(healed, 'body') ? mergeBody(originalBody, healed.body) : originalBody;

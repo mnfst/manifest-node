@@ -4,17 +4,21 @@ const secretNames = new Set(['api_key', 'apikey', 'api_token', 'key', 'token', '
 const roots = ['auth', 'key', 'token', 'secret', 'session', 'password', 'passwd', 'cookie', 'signature', 'credential', 'bearer', 'jwt'];
 const normalize = (name: string) => name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replaceAll('-', '_').toLowerCase().replace(/^x_/, '');
 export const isSecret = (name: string) => secretNames.has(normalize(name));
+/** A name the SDK masks on the wire: an exact credential name or one built on a credential root. */
+export const isSecretName = (name: string) => isSecret(name) || roots.some(root => normalize(name).includes(root));
+/** What the SDK writes in place of a credential; never put back on the wire when served back. */
+export const MASK = 'REDACTED';
 export const isObject = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 export function safeUrl(raw: string): string {
   const url = new URL(raw);
   url.username = ''; url.password = ''; url.hash = '';
-  const pairs = [...url.searchParams].map(([key, value]) => [key, isSecret(key) ? 'REDACTED' : value]);
+  const pairs = [...url.searchParams].map(([key, value]) => [key, isSecret(key) ? MASK : value]);
   url.search = new URLSearchParams(pairs as [string, string][]).toString();
   return url.toString();
 }
 export function safeHeaders(headers: Headers): Record<string, string> {
   return Object.fromEntries([...headers].map(([key, value]) => [key,
-    isSecret(key) || roots.some(root => normalize(key).includes(root)) ? 'REDACTED' : value.slice(0, 1024)]));
+    isSecretName(key) ? MASK : value.slice(0, 1024)]));
 }
 export function travelingBody(body: unknown): unknown {
   return isObject(body) ? Object.fromEntries(Object.entries(body).filter(([key]) => !isSecret(key))) : body;

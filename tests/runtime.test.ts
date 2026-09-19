@@ -152,6 +152,29 @@ test('applies healed headers and same-origin URL without changing caller credent
   assert.equal(r.requests[1]!.headers['x-added'], 'yes');
 });
 
+test('puts the caller\'s own query credentials back on a healed URL', async t => {
+  // The SDK masks ?key= on the wire and the server drops credentials from the
+  // URL it serves, so the retry must restore the caller's key, while a value the
+  // server did heal still wins.
+  const r = await rig(); t.after(r.close);
+  r.config.result.healedRequest = { url: r.provider.url + '/new?limit=100&session=REDACTED', body: { limit: 100 } };
+  const response = await r.runtime.fetch(r.provider.url + '/old?key=AIza-live&limit=500&session=s1', { method: 'POST', body: '{"limit":500}' });
+  await response.body?.cancel();
+  const retried = new URL(r.requests[1]!.path, r.provider.url).searchParams;
+  assert.equal(retried.get('key'), 'AIza-live');
+  assert.equal(retried.get('session'), 's1');
+  assert.equal(retried.get('limit'), '100');
+});
+
+test('never sets a header the server served back under the SDK\'s own mask', async t => {
+  const r = await rig(); t.after(r.close);
+  r.config.result.healedRequest = { headers: { 'x-signature': 'REDACTED', 'x-added': 'yes' }, body: { limit: 100 } };
+  const response = await r.runtime.fetch(r.provider.url + '/old', { method: 'POST', headers: { 'x-signature': 'sig-1' }, body: '{"limit":500}' });
+  await response.body?.cancel();
+  assert.equal(r.requests[1]!.headers['x-signature'], 'sig-1');
+  assert.equal(r.requests[1]!.headers['x-added'], 'yes');
+});
+
 test('does not retry with incomplete capture evidence', async () => {
   let upstreamCalls = 0; let reports = 0;
   const raw: typeof fetch = async (input, init) => {
