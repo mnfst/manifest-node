@@ -1,0 +1,23 @@
+.github/legal-watch/check.mjs
+  s_062b470463ff4f::t_b69d36ac308141 16
+.github/legal-watch/prompt.md
+  s_062b470463ff4f::t_554163e308d734 25,28,38-39
+README.md
+  s_062b470463ff4f::t_5d605e552ffdd5 38,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f5f8ed4c3f15ec08742f017af24b485b68e473b0",
+  "prompts": {},
+  "sessions": {
+    "s_062b470463ff4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d375f145-17cf-41a4-8512-f3e53a4a262a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
