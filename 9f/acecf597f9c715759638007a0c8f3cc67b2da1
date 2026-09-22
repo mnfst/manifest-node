@@ -1,0 +1,23 @@
+README.md
+  s_580112fdafd6da::t_cfa40e4eb2fe41 3
+package.json
+  s_580112fdafd6da::t_6c4049f0aeda6f 38-39
+.changeset/npmignore-sdk-diagram.md
+  s_580112fdafd6da::t_b804d61ab71ef9 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9facecf597f9c715759638007a0c8f3cc67b2da1",
+  "prompts": {},
+  "sessions": {
+    "s_580112fdafd6da": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f373e8371ffeFUJDdEwA5zRNCV",
+        "model": "auto"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
