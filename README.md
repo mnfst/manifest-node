@@ -1,6 +1,6 @@
 <div align="center">
 
-![Manifest SDK Architecture](./docs/github-sdk.png)
+![Manifest SDK Architecture](https://raw.githubusercontent.com/mnfst/manifest-node/main/docs/github-sdk.png)
 
 # Manifest for Node.js
 
