@@ -1,0 +1,27 @@
+src/cli.ts
+  s_183f1f3eba61e7::t_afed7390a36342 248-249,276-280,285-286,340
+docs/guide.md
+  s_183f1f3eba61e7::t_708465ade6c286 34,79-84,91-92
+README.md
+  s_183f1f3eba61e7::t_f55fe323eb0ede 43,69
+.changeset/in-code-install.md
+  s_183f1f3eba61e7::t_4ca02385f594aa 1-5
+tests/cli.test.ts
+  s_183f1f3eba61e7::t_6a5fdf2669f57c 55,118,125-126,128-129,132-154,163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "26af0bd36db14e8916f44e7bd9bbd29e471162f1",
+  "prompts": {},
+  "sessions": {
+    "s_183f1f3eba61e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf3ae316-dcf3-47e7-87dd-ec730248339f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
