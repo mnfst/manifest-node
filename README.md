@@ -40,7 +40,7 @@ Manifest is a self-healing layer that fixes and retries failed API requests on t
 
 [Read the prompt →](https://dashboard.manifest.build/prompt-node.md)
 
-The prompt adds the preload to your start command and stops to let you paste your key.
+The prompt adds the one-line install to your entry file and stops to let you paste your key.
 
 ### Start with code
 
@@ -66,7 +66,7 @@ TypeScript, ESM and CommonJS. Zero dependencies.
 export MNFST_KEY='your-project-key'
 ```
 
-Call `manifest()` before any library grabs its own reference to `fetch` or `node:http`. To install before any of your modules run, preload it instead:
+Call `manifest()` from the first import of the file that starts your app, before any client is constructed. Some clients keep the `fetch` they saw when they were built, and a client built at import time runs before your call. Where that happens, or where the start command is not yours to change, preload the SDK instead:
 
 ```sh
 node -r manifest/register app.js

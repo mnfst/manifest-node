@@ -31,7 +31,7 @@ manifest({
 
 ## Preloading
 
-`manifest()` covers clients that read `fetch` after it runs. Some clients, the OpenAI and Anthropic SDKs among them, read global `fetch` once when constructed, and a client built at import time runs before any `manifest()` call in your code. Preload the register entry to install first:
+Calling `manifest()` from the first import of your entry file covers clients that read `fetch` after it runs, which is most of them. Some clients, the OpenAI and Anthropic SDKs among them, read global `fetch` once when constructed, and a client built at import time runs before any `manifest()` call in your code. Preload the register entry to install first:
 
 ```sh
 node -r manifest/register app.js
@@ -76,16 +76,19 @@ npx manifest doctor
 ```
 
 ```
-  ✅ SDK installed         manifest 7.0.0
-  ✅ MNFST_KEY set         mnfst_proj_…DZDw
-  ✅ Key valid             project "Find Concierge"
-  ✅ Preload active        a script preloads manifest/register
-  ⚠️ Requests received     no requests received yet
+  ✅ SDK installed          manifest 7.0.0
+  ✅ MNFST_KEY set          mnfst_proj_…DZDw
+  ✅ Key valid              project "Find Concierge"
+  ⚠️ Loads before your app  cannot tell from here whether manifest() runs; check
+                            Requests received
+  ⚠️ Requests received      no requests received yet
 
 Runtime coverage
   Node.js runtime   fetch, http.request, https.request, http.get are patched
   Edge runtime      not supported — middleware.ts and Edge route handlers are never covered
 ```
+
+**Loads before your app** recognizes a preload flag in a script and `instrumentation.ts` on a Next.js project. It does not read your source, so the ordinary `manifest()` call in an entry file is invisible to it: that is a warning, not a failure, and **Requests received** is what settles it. The one failure it reports is a Next.js project with no instrumentation file, where nothing can install Manifest at all.
 
 `doctor` resolves the installed version, masks the key (it is never printed in full), and makes one round trip to the handshake endpoint — the only check that tells a good key from a typo'd or revoked one, which both look like silence otherwise. A non-zero exit code means a check failed.
 

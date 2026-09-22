@@ -52,7 +52,7 @@ test('doctor validates the key, reports the project and detects preload', async 
   assert.deepEqual(check(report, 'MNFST_KEY set'), { label: 'MNFST_KEY set', status: 'ok', detail: 'mnfst_proj_…DZDw' });
   assert.deepEqual(check(report, 'Key valid'), { label: 'Key valid', status: 'ok', detail: 'project "Find Concierge"' });
   assert.deepEqual(check(report, 'Requests received'), { label: 'Requests received', status: 'ok', detail: '3 requests received' });
-  assert.equal(check(report, 'Preload active').status, 'ok');
+  assert.equal(check(report, 'Loads before your app').status, 'ok');
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0]!.url, '/v1/hello');
@@ -115,20 +115,43 @@ test('zero requests is a warning, not a failure', async (t) => {
   assert.deepEqual(check(report, 'Requests received'), { label: 'Requests received', status: 'warn', detail: 'no requests received yet' });
 });
 
-test('a start script without preload is a failure, and Next.js asks for instrumentation', async (t) => {
+test('an unproven install warns, but Next.js without instrumentation fails', async (t) => {
   const plain = await project({ start: 'next start' });
   const next = await project({ start: 'next start' }, { next: '15.0.0' });
   t.after(async () => {
     await Promise.all([plain, next].map((dir) => rm(dir, { recursive: true, force: true })));
   });
 
+  // manifest() is normally called in the entry file, which doctor does not
+  // read, so silence is not evidence of a broken install and must not fail.
   const plainReport = await runDoctor({ cwd: plain, env: {}, sdkVersion: '7.0.0' });
-  assert.equal(check(plainReport, 'Preload active').status, 'fail');
-  assert.match(check(plainReport, 'Preload active').detail, /no NODE_OPTIONS/);
+  assert.equal(check(plainReport, 'Loads before your app').status, 'warn');
+  assert.match(check(plainReport, 'Loads before your app').detail, /cannot tell from here/);
 
   const nextReport = await runDoctor({ cwd: next, env: {}, sdkVersion: '7.0.0' });
-  assert.equal(check(nextReport, 'Preload active').status, 'fail');
-  assert.match(check(nextReport, 'Preload active').detail, /instrumentation/);
+  assert.equal(check(nextReport, 'Loads before your app').status, 'fail');
+  assert.match(check(nextReport, 'Loads before your app').detail, /instrumentation/);
+});
+
+// The install doctor recommends is a manifest() call in the entry file, which
+// it does not read. Failing that would make doctor exit non-zero for a correct
+// install, and a CI step would stop the deploy.
+test('an install this cannot see does not fail the run', async (t) => {
+  const api = await server((_req, res) => reply(res, 200, { project: { name: 'Quiet App' }, requests: 2 }));
+  const dir = await project({ start: 'node server.js' });
+  t.after(async () => {
+    await api.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const report = await runDoctor({
+    cwd: dir,
+    env: { MNFST_KEY: KEY, MNFST_URL: api.url },
+    fetch,
+    sdkVersion: '7.0.0',
+  });
+  assert.equal(check(report, 'Loads before your app').status, 'warn');
+  assert.equal(report.ok, true);
 });
 
 test('instrumentation.ts counts as a Next.js install', async (t) => {
@@ -137,7 +160,7 @@ test('instrumentation.ts counts as a Next.js install', async (t) => {
   t.after(() => rm(dir, { recursive: true, force: true }));
 
   const report = await runDoctor({ cwd: dir, env: {}, sdkVersion: '7.0.0' });
-  assert.deepEqual(check(report, 'Preload active'), { label: 'Preload active', status: 'ok', detail: 'instrumentation.ts installs Manifest before the app runs' });
+  assert.deepEqual(check(report, 'Loads before your app'), { label: 'Loads before your app', status: 'ok', detail: 'instrumentation.ts installs Manifest before the app runs' });
 });
 
 test('--send-test posts one synthetic capture', async (t) => {

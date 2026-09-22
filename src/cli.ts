@@ -245,8 +245,8 @@ const instrumentationFiles = [
   "src/instrumentation.mjs",
 ];
 
-async function preloadCheck(cwd: string): Promise<DoctorCheck> {
-  const label = "Preload active";
+async function loadCheck(cwd: string): Promise<DoctorCheck> {
+  const label = "Loads before your app";
   const found = await nearestPackage(cwd);
   if (!found)
     return { label, status: "warn", detail: "no package.json found; cannot tell how Manifest loads" };
@@ -273,12 +273,17 @@ async function preloadCheck(cwd: string): Promise<DoctorCheck> {
     };
   }
 
+  // Manifest is normally installed by a `manifest()` call in the entry file,
+  // which this cannot see without reading the app's source. So an install it
+  // cannot find is unproven, not broken: it warns, and "Requests received"
+  // below is what settles the question. Only Next.js above can fail here,
+  // because there the absent instrumentation file IS the proof.
   const start = scripts.start;
   if (typeof start === "string" && start.trim())
     return {
       label,
-      status: "fail",
-      detail: `package.json "start" runs \`${start.trim()}\` with no NODE_OPTIONS — Manifest will not load unless called in code`,
+      status: "warn",
+      detail: "cannot tell from here whether manifest() runs; check Requests received",
     };
   return {
     label,
@@ -332,7 +337,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorRepo
     }
   }
 
-  checks.push(await preloadCheck(cwd));
+  checks.push(await loadCheck(cwd));
 
   if (requests !== undefined) {
     checks.push({
