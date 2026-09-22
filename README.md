@@ -80,7 +80,7 @@ Verify the install from your project directory:
 npx manifest doctor
 ```
 
-It resolves the installed SDK version, masks and validates the key against the handshake endpoint, checks that Manifest loads before your app, and prints the runtime coverage. Add `--send-test` to send one synthetic failing request and flip the dashboard's connect screen right away.
+It resolves the installed SDK version, masks and validates the key against the handshake endpoint, checks that Manifest loads before your app, and prints the runtime coverage.
 
 ## Try it
 
