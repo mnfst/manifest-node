@@ -1,5 +1,17 @@
 # manifest
 
+## 7.1.0
+
+### Minor Changes
+
+- 166988b: Add `npx manifest doctor`. It resolves the installed version, masks and validates `MNFST_KEY` in one round trip to the handshake endpoint, checks that Manifest loads before your app, and prints the runtime coverage. The package now ships a `manifest` bin.
+
+### Patch Changes
+
+- ee3722e: Retry a DELETE or OPTIONS bodyless when the patch merges to no body, instead of skipping the retry. GET and HEAD still never carry a body.
+- ceb0304: Stop sending the `x-mnfst-source` header. `User-Agent` carries the SDK name and version, which is what the app reads.
+- 26af0bd: Lead the install with `manifest()` in the entry file instead of the `node -r manifest/register` preload. The preload still exists and is still the right answer where a client is built at import time or the start command is not yours to change, but it is no longer the first thing an install has to do. `doctor`'s "Preload active" check becomes "Loads before your app": an install it cannot see is now a warning rather than a failure, so a correct in-code install no longer exits non-zero.
+
 ## 7.0.0
 
 ### Major Changes
