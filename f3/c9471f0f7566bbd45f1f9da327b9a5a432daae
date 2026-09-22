@@ -1,0 +1,19 @@
+.changeset/doctor-command.md
+  s_183f1f3eba61e7::t_811bec515b3c83 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f3c9471f0f7566bbd45f1f9da327b9a5a432daae",
+  "prompts": {},
+  "sessions": {
+    "s_183f1f3eba61e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf3ae316-dcf3-47e7-87dd-ec730248339f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
