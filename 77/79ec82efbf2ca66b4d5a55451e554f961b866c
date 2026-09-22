@@ -1,0 +1,19 @@
+scripts/sync-version.mjs
+  s_580112fdafd6da::t_ad2ee0f2db5944 6,8-9,12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7779ec82efbf2ca66b4d5a55451e554f961b866c",
+  "prompts": {},
+  "sessions": {
+    "s_580112fdafd6da": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f373e8371ffeFUJDdEwA5zRNCV",
+        "model": "auto"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
