@@ -5,6 +5,7 @@ import type { ManifestOptions } from "./types.js";
 export type { ManifestOptions, HealEvent } from "./types.js";
 export { VERSION } from "./api.js";
 const STATE = Symbol.for("mnfst.node.runtime.v1");
+const EXIT_FLUSH_MS = 2000;
 const globals = globalThis as unknown as Record<symbol, Runtime | undefined>;
 
 /** Install once, before libraries capture their own reference to global fetch. */
@@ -52,7 +53,8 @@ export function manifest(options: ManifestOptions = {}): void {
   runtime.api.hello(`node-${process.versions.node}`);
   // Send the calls still buffered when the event loop drains (a script or a
   // cron job ending). The app owns its signals, so no SIGTERM handler here.
-  process.on("beforeExit", () => {
-    if (runtime.tracker.size() > 0) void runtime.tracker.flush();
+  // Once, with a deadline: a script must never hang on an unreachable server.
+  process.once("beforeExit", () => {
+    if (runtime.tracker.size() > 0) void runtime.tracker.flush(EXIT_FLUSH_MS);
   });
 }

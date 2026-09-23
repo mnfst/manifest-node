@@ -62,3 +62,31 @@ test('the interval sends a small batch without waiting for 500', async () => {
   assert.deepEqual(sent.map(b => b.length), [1]);
   buf.stop();
 });
+
+test('never has two sends in flight, even while flush() runs', async () => {
+  let active = 0; let most = 0;
+  const buf = new CallBuffer(async () => {
+    active++; most = Math.max(most, active);
+    await new Promise(r => setTimeout(r, 30));
+    active--;
+  }, { intervalMs: 5, minGapMs: 0 });
+  for (let i = 0; i < 2000; i++) buf.record(call(i));
+  const flushing = buf.flush();
+  for (let i = 0; i < 1000; i++) buf.record(call(i)); // past flushAt while flushing
+  await flushing;
+  assert.equal(most, 1);
+  buf.stop();
+});
+
+test('flush(deadline) gives up on a hanging server at the deadline', async () => {
+  let aborted = 0;
+  const buf = new CallBuffer((_batch, signal) => new Promise((_resolve, reject) => {
+    signal.addEventListener('abort', () => { aborted++; reject(new Error('aborted')); });
+  }), { intervalMs: 60_000, minGapMs: 0 });
+  for (let i = 0; i < 5000; i++) buf.record(call(i));
+  const started = performance.now();
+  await buf.flush(200);
+  assert.ok(performance.now() - started < 1000, `took ${performance.now() - started} ms`);
+  assert.equal(aborted, 1); // aborted once, never retried
+  buf.stop();
+});

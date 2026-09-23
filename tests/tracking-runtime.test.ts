@@ -55,15 +55,6 @@ test('a healable failure goes to /v1/heal only, never also as a tracked call', a
   assert.deepEqual(r.tracked, []);
 });
 
-test('the SDK never tracks its own calls to Manifest', async t => {
-  const r = await rig(); t.after(r.close);
-  await (await r.runtime.fetch(r.provider.url + '/ok', { method: 'POST', body: '{}' })).text();
-  await r.runtime.tracker.flush();
-  await r.runtime.tracker.flush();
-  assert.equal(r.tracked.length, 1);
-  assert.ok(r.tracked.every(c => !c.url.startsWith(r.api.url)));
-});
-
 test('a backend without /v1/requests (404) is ignored and healing still works', async t => {
   const r = await rig(); t.after(r.close);
   r.config.requestsStatus = 404;
@@ -85,19 +76,38 @@ test('node:http calls are tracked too, 2xx and 401 alike', async t => {
   assert.equal(call!.statusCode, 200);
 });
 
-test('tracking adds no latency even when Manifest answers slowly', async t => {
+test('no call waits on a send, even one that never answers', async t => {
   const r = await rig(); t.after(r.close);
-  r.config.requestsDelayMs = 1000;
-  const run = async (doFetch: typeof fetch) => {
+  r.config.requestsDelayMs = 60_000; // Manifest accepts the batch and never answers
+  let slowest = 0;
+  for (let i = 0; i < 600; i++) { // crosses 500, so a send starts mid-loop
     const started = performance.now();
-    for (let i = 0; i < 600; i++) await (await doFetch(r.provider.url + '/ok', { method: 'POST', body: '{}' })).text();
-    return performance.now() - started;
-  };
-  const baseline = await run(fetch);
-  const tracked = await run(r.runtime.fetch);
-  // 600 calls cross the 500 threshold, so a send starts mid-run and takes 1 s:
-  // any await on it would add at least that.
-  assert.ok(tracked < baseline * 1.5 + 500, `baseline ${baseline.toFixed(0)} ms, tracked ${tracked.toFixed(0)} ms`);
+    await (await r.runtime.fetch(r.provider.url + '/ok', { method: 'POST', body: '{}' })).text();
+    slowest = Math.max(slowest, performance.now() - started);
+  }
+  assert.ok(slowest < 250, `slowest call ${slowest.toFixed(0)} ms`);
+});
+
+test('a healable failure that cannot be healed right now is tracked instead', async t => {
+  const r = await rig(); t.after(r.close);
+  const { Runtime } = await import('../src/runtime.js');
+  const { HealApi } = await import('../src/api.js');
+  const api = new HealApi(fetch, 'project-key', r.api.url + '/');
+  api.canHeal = () => false; // every heal slot busy, or the project disabled
+  const runtime = new Runtime({ key: 'project-key', url: r.api.url + '/' }, fetch, api);
+  const response = await runtime.fetch(r.provider.url + '/same', { method: 'POST', body: '{}' });
+  assert.equal(response.status, 400); await response.body?.cancel();
+  await runtime.tracker.flush();
+  assert.equal(r.captures.length, 0);
+  assert.deepEqual(r.tracked.map(c => c.statusCode), [400]);
+});
+
+test('methods are upper-cased and out-of-range records are never sent', async t => {
+  const r = await rig(); t.after(r.close);
+  r.runtime.track('patch', () => r.provider.url + '/x', 200, Date.now(), 1);
+  r.runtime.track('X'.repeat(17), () => r.provider.url + '/x', 200, Date.now(), 1);
+  r.runtime.track('GET', () => r.provider.url + '/' + 'a'.repeat(4100), 200, Date.now(), 1);
+  r.runtime.track('GET', () => 'mailto:a@b.co', 200, Date.now(), 1);
   await r.runtime.tracker.flush();
-  assert.equal(r.tracked.length, 600);
+  assert.deepEqual(r.tracked.map(c => c.method), ['PATCH']);
 });

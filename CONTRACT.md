@@ -63,7 +63,7 @@ Reports are best effort, bounded, and observable through Node warnings with code
 
 ## Tracked requests
 
-Every call the SDK sees and does not send to `POST /v1/heal`, whatever its status (2xx, 3xx, 401, 402, 403, 429, 5xx, and a 4xx after a redirect or while the project is disabled), is recorded and sent in batches to `POST /v1/requests`:
+Every call the SDK sees and does not send to `POST /v1/heal`, whatever its status (2xx, 3xx, 401, 402, 403, 429, 5xx, and a 4xx that is not sent for healing: after a redirect, while the project is disabled, or while all eight heal slots are busy), is recorded and sent in batches to `POST /v1/requests`:
 
 ```json
 {"requests":[{"traceId":"a-uuid","method":"POST","url":"https://example.com/orders","statusCode":200,"responseTimeMs":84,"occurredAt":"2026-09-23T10:14:07.512Z"}]}
@@ -71,4 +71,4 @@ Every call the SDK sees and does not send to `POST /v1/heal`, whatever its statu
 
 Metadata only. The URL carries scheme, host, port and path: no query string, userinfo or fragment. No headers and no request or response body are sent, and a response body is never read to record a call. A call sent to `/v1/heal` is not also tracked.
 
-Recording is an in-memory append and never delays or fails the caller's request. A batch is sent when 500 calls are queued or every five seconds, at most once per second, one send at a time, up to 500 calls per request, with a five-second deadline. At most 5,000 calls are buffered; newer calls are dropped past that. A network error, timeout, 429 or 5xx is retried once, then the batch is dropped; any other answer, including 404 from a server without the route, drops it. HTTP 403 with `{"error":"project_disabled"}` suspends sending for five minutes, as for healing. Buffered calls are sent when the event loop drains (`beforeExit`); a process killed or frozen first (serverless) can lose them.
+Recording is an in-memory append and never delays or fails the caller's request. A batch is sent when 500 calls are queued or every five seconds, at most once per second, one send at a time, up to 500 calls per request, with a five-second deadline. At most 5,000 calls are buffered; newer calls are dropped past that. A network error, timeout, 429 or 5xx is retried once, then the batch is dropped; any other answer, including 404 from a server without the route, drops it. HTTP 403 with `{"error":"project_disabled"}` suspends sending for five minutes, as for healing. Methods are upper-cased; a record whose method exceeds 16 characters or whose URL exceeds 4,096 is not sent. Buffered calls are sent once when the event loop drains (`beforeExit`), for at most two seconds: a send still in flight then is aborted and the rest is dropped, so a script never hangs on an unreachable server. A process killed or frozen first (serverless) can lose them.

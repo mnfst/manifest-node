@@ -41,7 +41,7 @@ function wrapRequest(original: typeof http.request, protocol: 'http:' | 'https:'
     request.emit = ((event: string | symbol, ...values: unknown[]) => {
       if (event !== 'response') return emit(event, ...values);
       const response = values[0] as IncomingMessage;
-      if (!eligible(response.statusCode ?? 0) || !runtime.api.enabled()) {
+      if (!eligible(response.statusCode ?? 0) || !runtime.api.canHeal()) {
         runtime.track(request.method, () => requestUrl(request, protocol).toString(), response.statusCode ?? 0,
           startedAt, performance.now() - started);
         return emit(event, ...values);

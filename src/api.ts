@@ -2,6 +2,7 @@ import { captureResponse } from "./capture.js";
 import { boundedJson, isObject } from "./wire.js";
 import type { Capture, Fetch, HealResult, Outcome, TrackedCall } from "./types.js";
 export const VERSION = "7.1.0";
+const MAX_HEALS_IN_FLIGHT = 8;
 export const warn = (message: string) =>
   process.emitWarning(message, { code: "MNFST" });
 export class HealApi {
@@ -19,6 +20,14 @@ export class HealApi {
   enabled() {
     return performance.now() >= this.disabledUntil;
   }
+  /**
+   * Whether a heal call would be sent right now: the project is not disabled
+   * and a heal slot is free. A healable failure that cannot be sent is tracked
+   * instead, so it is never lost from both ledgers.
+   */
+  canHeal() {
+    return this.enabled() && this.inFlight < MAX_HEALS_IN_FLIGHT;
+  }
   private headers() {
     return {
       authorization: `Bearer ${this.key}`,
@@ -30,7 +39,7 @@ export class HealApi {
     capture: Capture,
     signal: AbortSignal
   ): Promise<HealResult | null> {
-    if (!this.enabled() || this.inFlight >= 8) return null;
+    if (!this.canHeal()) return null;
     this.inFlight++;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -125,7 +134,7 @@ export class HealApi {
    * route, drops the batch quietly. Uses `rawFetch`, so the send is never
    * tracked or healed by our own patch.
    */
-  async sendRequests(calls: TrackedCall[]): Promise<void> {
+  async sendRequests(calls: TrackedCall[], signal?: AbortSignal): Promise<void> {
     if (!this.enabled() || calls.length === 0) return;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.reportTimeoutMs);
@@ -134,7 +143,7 @@ export class HealApi {
         method: "POST",
         headers: this.headers(),
         body: JSON.stringify({ requests: calls }),
-        signal: controller.signal,
+        signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
         redirect: "error",
       });
       if (response.status === 403) {
