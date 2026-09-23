@@ -1,0 +1,39 @@
+CONTRACT.md
+  s_eb3d812ee7c509::t_434ac0d2daf84c 66,74
+src/api.ts
+  s_eb3d812ee7c509::t_d334d8eec22551 5,23-30,42,137,146
+src/http.ts
+  s_eb3d812ee7c509::t_5da2ef49b7a57c 44
+src/index.ts
+  s_eb3d812ee7c509::t_85c7872464afc1 8,56-58
+src/runtime.ts
+  s_eb3d812ee7c509::t_5d105fae646de1 28,37-41,56
+src/tracking.ts
+  s_eb3d812ee7c509::t_39d694fa9c45b5 6,23-25,48-67,72-73,76-80,88,91-95,101,103
+tests/api.test.ts
+  s_eb3d812ee7c509::t_c8ee2684686011 132-146
+tests/fixtures/exit-flush.ts
+  s_eb3d812ee7c509::t_d8bec2cb95e24f 1-2,5-9
+tests/tracking-exit.test.ts
+  s_eb3d812ee7c509::t_3af250ac8eb252 8-10,12,14-28,30
+tests/tracking-runtime.test.ts
+  s_eb3d812ee7c509::t_f93e58485237c4 79,81-83,85-110,112
+tests/tracking.test.ts
+  s_eb3d812ee7c509::t_2926d815d7401e 65-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "423a98497bc5d6dbe10f2535547825fa3467ebc9",
+  "prompts": {},
+  "sessions": {
+    "s_eb3d812ee7c509": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "870ec716-ab0e-4fba-98d8-d89732a224f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
