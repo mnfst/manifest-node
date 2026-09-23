@@ -31,6 +31,7 @@ function wrapRequest(original: typeof http.request, protocol: 'http:' | 'https:'
   return ((...received: RequestArgs) => {
     const args = [...received] as unknown[];
     const callback = typeof args.at(-1) === 'function' ? args.pop() as RequestCallback : undefined;
+    const startedAt = Date.now();
     const started = performance.now();
     const request = original(...args as RequestArgs);
     const capture = captureBody(request);
@@ -40,7 +41,9 @@ function wrapRequest(original: typeof http.request, protocol: 'http:' | 'https:'
     request.emit = ((event: string | symbol, ...values: unknown[]) => {
       if (event !== 'response') return emit(event, ...values);
       const response = values[0] as IncomingMessage;
-      if (!eligible(response.statusCode ?? 0) || !runtime.api.enabled()) {
+      if (!eligible(response.statusCode ?? 0) || !runtime.api.canHeal()) {
+        runtime.track(request.method, () => requestUrl(request, protocol).toString(), response.statusCode ?? 0,
+          startedAt, performance.now() - started);
         return emit(event, ...values);
       }
       void handleResponse(runtime, request, response, protocol, capture.body(), signal, started)
@@ -65,6 +68,12 @@ async function handleResponse(runtime: Runtime, clientRequest: ClientRequest, in
   return incomingResponse(healed, clientRequest);
 }
 
+/** The URL a ClientRequest was sent to, rebuilt the way `webRequest` does. */
+function requestUrl(request: ClientRequest, protocol: string): URL {
+  const authority = String(request.getHeader('host') ?? request.host);
+  return new URL(request.path, `${protocol}//${authority}`);
+}
+
 function webRequest(request: ClientRequest, protocol: string, captured: { body: unknown; complete: boolean }, signal: AbortSignal): Request {
   const headers = new Headers();
   for (const name of request.getHeaderNames()) {
@@ -73,8 +82,7 @@ function webRequest(request: ClientRequest, protocol: string, captured: { body: 
       if (item !== undefined) headers.append(name, String(item));
     }
   }
-  const authority = String(request.getHeader('host') ?? request.host);
-  const url = new URL(request.path, `${protocol}//${authority}`);
+  const url = requestUrl(request, protocol);
   const method = request.method;
   return new Request(url, {
     method, headers, signal,

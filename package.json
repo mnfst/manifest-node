@@ -36,7 +36,8 @@
     "README.md",
     "CONTRACT.md",
     "docs",
-    "!docs/github-sdk.png"
+    "!docs/github-sdk.png",
+    "!docs/sdk-flow-diagram.svg"
   ],
   "engines": {
     "node": ">=22"

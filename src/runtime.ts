@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { HealApi, warn } from './api.js';
 import { captureRequest, captureResponse } from './capture.js';
-import { isObject, mergeBody, safeHeaders, safeUrl, serializeRequestBody, travelingBody, TRANSPORT_ERROR } from './wire.js';
+import { CallBuffer } from './tracking.js';
+import { isObject, mergeBody, safeHeaders, safeUrl, serializeRequestBody, trackedUrl, travelingBody, TRANSPORT_ERROR } from './wire.js';
 import type { Capture, Fetch, HealResult, ManifestOptions } from './types.js';
 // Only request-side failures are worth capturing. The forbidden statuses are
 // the ones editing the request cannot fix: 401/403 (auth), 402 (billing),
@@ -20,8 +21,26 @@ export interface ResolvedOptions extends ManifestOptions { key: string; url: str
 
 export class Runtime {
   readonly api: HealApi;
+  /** Calls that did not go to `/v1/heal`, any status, on their way to `/v1/requests`. */
+  readonly tracker: CallBuffer;
   constructor(readonly options: ResolvedOptions, private original: Fetch, api?: HealApi) {
     this.api = api ?? new HealApi(original, options.key, options.url);
+    this.tracker = new CallBuffer((batch, signal) => this.api.sendRequests(batch, signal));
+  }
+  /**
+   * Record a call that is not being healed. An in-memory append: never awaited,
+   * never throws, reads nothing of the response.
+   */
+  track(method: string, url: () => string, statusCode: number, startedAt: number, responseTimeMs: number): void {
+    try {
+      const reported = trackedUrl(url());
+      const verb = method.toUpperCase();
+      // The server refuses a whole batch over one out-of-range record.
+      if (!reported || reported.length > 4096 || !verb || verb.length > 16 ||
+        statusCode < 100 || statusCode > 599) return;
+      this.tracker.record({ traceId: randomUUID(), method: verb, url: reported, statusCode,
+        responseTimeMs: Math.round(responseTimeMs), occurredAt: new Date(startedAt).toISOString() });
+    } catch { /* tracking never fails the caller's request */ }
   }
   readonly fetch: Fetch = async (input, init) => {
     // Normalize once, consuming Request inputs in the same way fetch does.
@@ -30,10 +49,14 @@ export class Runtime {
     // The tee is bounded and runs alongside the outgoing request, never ahead
     // of it without a limit. Its cancellation must not wait for the other tee.
     const bodyPromise = captureRequest(request).catch(() => ({ body: null, complete: false }));
+    const startedAt = Date.now();
     const started = performance.now();
     const response = await this.original(request, extras);
     const responseTimeMs = performance.now() - started;
-    if (!eligible(response.status) || response.redirected || !this.api.enabled()) return response;
+    if (!eligible(response.status) || response.redirected || !this.api.canHeal()) {
+      this.track(request.method, () => request.url, response.status, startedAt, responseTimeMs);
+      return response;
+    }
     return this.handleResponse(request, response, await bodyPromise, responseTimeMs, extras);
   };
   async handleResponse(request: Request, response: Response, body: { body: unknown; complete: boolean },

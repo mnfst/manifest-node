@@ -27,3 +27,16 @@ export type Outcome =
   | { response: { statusCode: number; body?: unknown; truncated?: boolean } }
   | { failure: { kind: 'transport_error' | 'not_attempted'; message?: string } };
 export type Fetch = typeof globalThis.fetch;
+/**
+ * One call the SDK saw and did not send to `/v1/heal`, any status. Metadata
+ * only: the URL carries no query, userinfo or fragment, and nothing of the
+ * request or response body is sent.
+ */
+export interface TrackedCall {
+  traceId: string;
+  method: string;
+  url: string;
+  statusCode: number;
+  responseTimeMs: number | null;
+  occurredAt: string;
+}

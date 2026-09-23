@@ -129,3 +129,18 @@ test("a failing hello is swallowed", async () => {
   assert.equal(api.hello("node-22.0.0"), undefined);
   await new Promise((r) => setImmediate(r));
 });
+
+test("sendRequests throws only when a retry could help", async (t) => {
+  let status = 202;
+  let body: unknown = { accepted: 1 };
+  const service = await server((_req, res) => reply(res, status, body));
+  t.after(service.close);
+  const api = new HealApi(fetch, "key", service.url + "/");
+  const call = { traceId: "t", method: "GET", url: "https://a.com/x", statusCode: 200,
+    responseTimeMs: 1, occurredAt: new Date(0).toISOString() };
+  for (status of [202, 400, 401, 404]) await api.sendRequests([call]);
+  for (status of [429, 500, 503]) await assert.rejects(api.sendRequests([call]));
+  status = 403; body = { error: "project_disabled" };
+  await api.sendRequests([call]);
+  assert.equal(api.enabled(), false);
+});

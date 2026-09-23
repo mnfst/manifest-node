@@ -81,7 +81,7 @@ test('successful retries stay streamed', async t => {
   r.config.finish(); assert.equal(await response.text(), 'firstlast');
 });
 
-test('successful original calls never contact Manifest', async t => {
+test('successful original calls are never sent to /v1/heal', async t => {
   const r = await rig(); t.after(r.close);
   const response = await r.runtime.fetch(r.provider.url + '/ok', { method: 'POST', body: '{"limit":50}' });
   assert.equal(response.status, 200); assert.equal(r.captures.length, 0);

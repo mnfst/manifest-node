@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { once } from 'node:events';
 import { gzipSync } from 'node:zlib';
-import type { Capture, HealResult, Outcome } from '../src/types.js';
+import type { Capture, HealResult, Outcome, TrackedCall } from '../src/types.js';
 import { Runtime } from '../src/runtime.js';
 export const ATTEMPT = '33333333-3333-4333-8333-333333333333';
 export const error = { error: { message: 'range of limit should be [1, 100]', param: 'limit', code: 'invalid_value', type: 'validation_error' } };
@@ -36,13 +36,20 @@ export async function waitFor(predicate: () => boolean, timeoutMs = 3000): Promi
   throw new Error('waitFor timed out');
 }
 export async function rig() {
-  const captures: Capture[] = []; const outcomes: Outcome[] = [];
+  const captures: Capture[] = []; const outcomes: Outcome[] = []; const tracked: TrackedCall[] = [];
   const requests: { path: string; body: any; headers: IncomingMessage['headers'] }[] = [];
-  const config: { result: HealResult; disabled: boolean; reportStatus: number; finish?: () => void } = {
+  const config: { result: HealResult; disabled: boolean; reportStatus: number; requestsStatus: number;
+    requestsDelayMs: number; finish?: () => void } = {
     result: { status: 'unverified', healAttemptId: ATTEMPT, healedRequest: { body: { limit: 100 } } }, disabled: false, reportStatus: 200,
+    requestsStatus: 202, requestsDelayMs: 0,
   };
   const api = await server(async (req, res) => {
     const body = await jsonBody(req);
+    if (req.url === '/v1/requests') {
+      if (config.requestsDelayMs) await new Promise(resolve => setTimeout(resolve, config.requestsDelayMs));
+      if (config.requestsStatus === 202) tracked.push(...body.requests);
+      reply(res, config.requestsStatus, { accepted: body.requests.length }); return;
+    }
     if (req.url === '/v1/heal') {
       captures.push(body); reply(res, config.disabled ? 403 : 200, config.disabled ? { error: 'project_disabled' } : config.result);
     } else if (req.url === `/v1/heal-attempts/${ATTEMPT}`) {
@@ -71,6 +78,6 @@ export async function rig() {
     reply(res, 200, { received: body });
   });
   const runtime = new Runtime({ key: 'project-key', url: api.url + '/' }, fetch);
-  return { api, provider, runtime, config, captures, outcomes, requests,
+  return { api, provider, runtime, config, captures, outcomes, requests, tracked,
     close: async () => { await waitFor(() => runtime.api.pending.size === 0); await Promise.all([api.close(), provider.close()]); } };
 }

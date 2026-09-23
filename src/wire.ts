@@ -12,6 +12,19 @@ export function safeUrl(raw: string): string {
   url.search = new URLSearchParams(pairs as [string, string][]).toString();
   return url.toString();
 }
+/**
+ * The URL a tracked call is reported under: scheme, host, port and path only.
+ * The query, fragment and userinfo are where credentials ride, so they never
+ * leave the process. Null when the URL cannot be parsed or is not http(s).
+ */
+export function trackedUrl(raw: string): string | null {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    url.username = ''; url.password = ''; url.search = ''; url.hash = '';
+    return url.toString();
+  } catch { return null; }
+}
 export function safeHeaders(headers: Headers): Record<string, string> {
   return Object.fromEntries([...headers].map(([key, value]) => [key,
     isSecret(key) || roots.some(root => normalize(key).includes(root)) ? 'REDACTED' : value.slice(0, 1024)]));
