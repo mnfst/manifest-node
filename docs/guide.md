@@ -105,6 +105,7 @@ You can also verify by hand: send a JSON request that your test API rejects with
 - JSON and `application/x-www-form-urlencoded` APIs, including nested form fields. No provider-specific request format is required.
 - One retry per capture. Same-origin URL and header repairs are supported by the SDK; the current app returns structured body repairs.
 - Successful calls and successful retries remain streamed. Failed responses retain their bytes, status, headers, URL and redirect metadata.
+- Every call that is not healed, whatever its status, is tracked as metadata only and sent in batches, off the request path (see "Data sent to Manifest").
 
 **Not covered:** browser JavaScript, HTTP/2, directly imported `undici.fetch`, and `fetch` references saved before initialization (see `manifest/register` above). Those transports need separate integration. This SDK does not claim to intercept every Node HTTP client.
 
@@ -123,7 +124,9 @@ Outcome reports are best effort, limited to 64 concurrent requests with five-sec
 
 ## Data sent to Manifest
 
-Failed URLs, request headers, JSON or form-urlencoded bodies, and raw error responses go to the configured server. Known credential names in query parameters and headers are masked; credential-named top-level request body fields are withheld and restored on retry. Exception prose is not sent for transport failures.
+**Every call (metadata only).** For each call that is not healed, whatever its status, the SDK sends its method, URL without the query string, userinfo or fragment, status code, response time and time of the call. No headers and no bodies. Calls are batched and sent in the background, at most once per second; recording one never slows the call. Calls still buffered when a serverless runtime freezes the process can be lost.
+
+**Healable failures (full capture).** Failed URLs, request headers, JSON or form-urlencoded bodies, and raw error responses go to the configured server. Known credential names in query parameters and headers are masked; credential-named top-level request body fields are withheld and restored on retry. Exception prose is not sent for transport failures.
 
 This is not general secret detection: nested fields, arbitrary secret names, business data and response bodies may contain sensitive information. Enable it only for traffic you permit Manifest to process and store. The SDK makes the actual retry locally.
 

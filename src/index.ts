@@ -50,4 +50,9 @@ export function manifest(options: ManifestOptions = {}): void {
   // Announce the install, so that silence stops being ambiguous. Fire-and-
   // forget: it must never delay startup and never throw into the host app.
   runtime.api.hello(`node-${process.versions.node}`);
+  // Send the calls still buffered when the event loop drains (a script or a
+  // cron job ending). The app owns its signals, so no SIGTERM handler here.
+  process.on("beforeExit", () => {
+    if (runtime.tracker.size() > 0) void runtime.tracker.flush();
+  });
 }

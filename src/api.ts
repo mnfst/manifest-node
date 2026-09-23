@@ -1,6 +1,6 @@
 import { captureResponse } from "./capture.js";
 import { boundedJson, isObject } from "./wire.js";
-import type { Capture, Fetch, HealResult, Outcome } from "./types.js";
+import type { Capture, Fetch, HealResult, Outcome, TrackedCall } from "./types.js";
 export const VERSION = "7.1.0";
 export const warn = (message: string) =>
   process.emitWarning(message, { code: "MNFST" });
@@ -116,6 +116,41 @@ export class HealApi {
       })
       .catch(() => {})
       .finally(() => clearTimeout(timer));
+  }
+
+  /**
+   * Ship one batch of tracked calls to `POST /v1/requests`. Throws only when a
+   * retry could help (network error, timeout, 429, 5xx), so the buffer retries
+   * once; any other answer, including 404 from a backend that predates the
+   * route, drops the batch quietly. Uses `rawFetch`, so the send is never
+   * tracked or healed by our own patch.
+   */
+  async sendRequests(calls: TrackedCall[]): Promise<void> {
+    if (!this.enabled() || calls.length === 0) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.reportTimeoutMs);
+    try {
+      const response = await this.rawFetch(new URL("v1/requests", this.url), {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify({ requests: calls }),
+        signal: controller.signal,
+        redirect: "error",
+      });
+      if (response.status === 403) {
+        const body = await response.json().catch(() => null);
+        if (isObject(body) && body.error === "project_disabled") {
+          this.disabledUntil = performance.now() + 300_000;
+        }
+        return;
+      }
+      void response.body?.cancel().catch(() => {});
+      if (response.status === 429 || response.status >= 500) {
+        throw new Error(`tracked calls refused (${response.status})`);
+      }
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   report(id: string | undefined, outcome: Outcome): void {
