@@ -4,7 +4,7 @@
 
 # Manifest for Node.js
 
-**Turn 🔴 4xx API errors into 🟢 2xx in real time.**
+**The API resilience layer for your Node.js apps.**
 
 [![CI](https://github.com/mnfst/manifest-node/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mnfst/manifest-node/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/manifest?label=npm)](https://www.npmjs.com/package/manifest)
@@ -16,11 +16,11 @@
 
 ## What is Manifest
 
-Manifest is a self-healing layer that fixes and retries failed API requests on the fly.
+Manifest is the API resilience layer for your apps and agents. It works with every API they call: external services, your internal APIs and MCP tools.
 
-* 🎯 **Fix failures automatically** before they impact your users.
-* 🔔 **Get notified of root causes** so you can fix them permanently.
-* 🔌 **Works across your stack** with internal APIs, external services, and agent tools.
+* 🗺️ **See every API your app depends on**, and how reliable each one is.
+* 🎯 **Repair failed API requests on the fly**, so your app keeps working.
+* 🛠️ **Know what to fix in your code**, with a prompt for your coding agent.
 
 ## How it works
 
@@ -46,47 +46,73 @@ The prompt adds the one-line install to your entry file and stops to let you pas
 
 ### Start with code
 
-```sh
-npm install manifest
-```
-
-```js
-import { manifest } from 'manifest';
-
-manifest();  // Once, at startup.
-// Keep making your API calls as usual.
-```
-
-TypeScript, ESM and CommonJS. Zero dependencies.
-
-## Setup
-
 1. Create a project in your [Manifest dashboard](https://dashboard.manifest.build) and copy its project key.
-2. Set the key as an environment variable:
 
-```sh
-export MNFST_KEY='your-project-key'
-```
+2. Install the SDK:
 
-Call `manifest()` from the first import of the file that starts your app, before any client is constructed. Some clients keep the `fetch` they saw when they were built, and a client built at import time runs before your call. Where that happens, or where the start command is not yours to change, preload the SDK instead:
+   ```sh
+   npm install manifest
+   ```
+
+3. Call `manifest()` from the first import of the file that starts your app, before any client is constructed:
+
+   ```js
+   import { manifest } from 'manifest';
+
+   manifest();  // Once, at startup.
+   // Keep making your API calls as usual.
+   ```
+
+   TypeScript, ESM and CommonJS. Zero dependencies.
+
+4. Set your key in the environment of your app:
+
+   ```sh
+   export MNFST_KEY='your-project-key'
+   ```
+
+5. Restart your app, then check the install from your project directory:
+
+   ```sh
+   npx manifest doctor
+   ```
+
+   It resolves the installed SDK version, masks and validates the key, checks that Manifest loads before your app, and prints the runtime coverage.
+
+Some clients keep the `fetch` they saw when they were built, and a client built at import time runs before your call. Where that happens, or where the start command is not yours to change, preload the SDK instead:
 
 ```sh
 node -r manifest/register app.js
 ```
 
-Self-healing is enabled by default in your project settings.
+### n8n
 
-Verify the install from your project directory:
+Manifest runs in a self-hosted n8n with Docker Compose, through this SDK. n8n Cloud cannot load it. Run the steps in this order:
 
-```sh
-npx manifest doctor
-```
+1. Install the SDK from the folder of your `docker-compose.yml`:
 
-It resolves the installed SDK version, masks and validates the key against the handshake endpoint, checks that Manifest loads before your app, and prints the runtime coverage.
+   ```sh
+   docker compose exec n8n npm install --prefix /home/node/.n8n/manifest manifest
+   ```
+
+2. Add these two lines to the `environment` of your n8n service, and of every worker service in queue mode:
+
+   ```yaml
+   MNFST_KEY: your-project-key
+   NODE_OPTIONS: --require /home/node/.n8n/manifest/node_modules/manifest/dist/register.cjs
+   ```
+
+3. Restart n8n:
+
+   ```sh
+   docker compose up -d
+   ```
+
+n8n does not start when `NODE_OPTIONS` names a file that is not installed yet, so keep this order.
 
 ## Try it
 
-Send a request that would normally fail. Manifest catches it, repairs it, and retries:
+Send a request that fails with a 4xx error, such as a value the API rejects:
 
 ```js
 import { manifest } from 'manifest';
@@ -100,13 +126,13 @@ manifest({
 const res = await fetch('https://api.example.com/orders', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ limit: 500 }),  // Invalid? Manifest fixes it and retries.
+  body: JSON.stringify({ limit: 500 }),  // rejected by the API
 });
-console.log(res.status);  // See the 200 OK response.
+console.log(res.status);
 ```
 
-Check your [Manifest dashboard](https://dashboard.manifest.build) to see all repairs and insights.
+The failed request appears in your [Manifest dashboard](https://dashboard.manifest.build), grouped with others like it in an issue. Once Manifest has a patch for that error, the next request that fails the same way is repaired and retried: `onHeal` reports `patched` or `unverified` with the retry's status code, and your app receives the answer to the retry.
 
 ## More
 
-[Configuration, limits & development](docs/guide.md) · [API contract](CONTRACT.md) · [Python SDK](https://github.com/mnfst/manifest-python) · [Website](https://manifest.build)
+[Documentation](https://docs.manifest.build) · [Configuration, limits & development](docs/guide.md) · [API contract](CONTRACT.md) · [Python SDK](https://github.com/mnfst/manifest-python) · [PHP SDK](https://github.com/mnfst/manifest-php) · [Website](https://manifest.build)
