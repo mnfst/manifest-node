@@ -1,7 +1,7 @@
 import { captureResponse } from "./capture.js";
 import { boundedJson, isObject } from "./wire.js";
 import type { Capture, Fetch, HealResult, Outcome, TrackedCall } from "./types.js";
-export const VERSION = "7.2.0";
+export const VERSION = "7.2.1";
 const MAX_HEALS_IN_FLIGHT = 8;
 export const warn = (message: string) =>
   process.emitWarning(message, { code: "MNFST" });
