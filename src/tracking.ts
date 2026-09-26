@@ -1,10 +1,15 @@
+import { keepAlive } from './serverless.js';
 import type { TrackedCall } from './types.js';
 
 const MAX_BUFFER = 5000;
 const MAX_BATCH = 500;
 
 type Send = (batch: TrackedCall[], signal: AbortSignal) => Promise<void>;
-interface Options { intervalMs?: number; flushAt?: number; minGapMs?: number }
+interface Options {
+  intervalMs?: number; flushAt?: number; minGapMs?: number;
+  /** Serverless: send as soon as a call is recorded, and hand the send to `keepAlive`. */
+  immediate?: boolean; keepAlive?: (promise: Promise<unknown>) => void;
+}
 
 /**
  * Collects one metadata record per outbound call and ships them to
@@ -26,10 +31,15 @@ export class CallBuffer {
   private readonly timer: NodeJS.Timeout;
   private readonly flushAt: number;
   private readonly minGapMs: number;
+  private readonly immediate: boolean;
+  private readonly keepAlive: (promise: Promise<unknown>) => void;
+  private draining: Promise<void> | null = null;
 
   constructor(private readonly send: Send, options: Options = {}) {
     this.flushAt = options.flushAt ?? 500;
     this.minGapMs = options.minGapMs ?? 1000;
+    this.immediate = options.immediate ?? false;
+    this.keepAlive = options.keepAlive ?? keepAlive;
     this.timer = setInterval(() => void this.kick(), options.intervalMs ?? 5000);
     this.timer.unref();
   }
@@ -37,7 +47,8 @@ export class CallBuffer {
   record(call: TrackedCall): void {
     if (this.queue.length >= MAX_BUFFER) return;
     this.queue.push(call);
-    if (this.queue.length >= this.flushAt) void this.kick();
+    if (this.immediate) this.drain();
+    else if (this.queue.length >= this.flushAt) void this.kick();
   }
 
   size(): number { return this.queue.length; }
@@ -68,6 +79,22 @@ export class CallBuffer {
   }
 
   stop(): void { clearInterval(this.timer); }
+
+  /**
+   * Serverless: the function may freeze as soon as its response is sent, before
+   * any timer fires. So send now, through `flush()` (same gap, same single send
+   * in flight), and let the platform wait for it. Calls recorded meanwhile ride
+   * the same drain; one that lands as it settles starts the next.
+   */
+  private drain(): void {
+    if (this.draining) return;
+    const run = this.flush().finally(() => {
+      this.draining = null;
+      if (this.queue.length > 0) this.drain();
+    });
+    this.draining = run;
+    this.keepAlive(run);
+  }
 
   private kick(): void {
     if (this.inFlight || this.queue.length === 0) return;

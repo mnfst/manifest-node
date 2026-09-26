@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { HealApi, warn } from './api.js';
 import { captureRequest, captureResponse } from './capture.js';
+import { isServerless } from './serverless.js';
 import { CallBuffer } from './tracking.js';
 import { isObject, mergeBody, safeHeaders, safeUrl, serializeRequestBody, trackedUrl, travelingBody, TRANSPORT_ERROR } from './wire.js';
 import type { Capture, Fetch, HealResult, ManifestOptions } from './types.js';
@@ -25,7 +26,8 @@ export class Runtime {
   readonly tracker: CallBuffer;
   constructor(readonly options: ResolvedOptions, private original: Fetch, api?: HealApi) {
     this.api = api ?? new HealApi(original, options.key, options.url);
-    this.tracker = new CallBuffer((batch, signal) => this.api.sendRequests(batch, signal));
+    this.tracker = new CallBuffer((batch, signal) => this.api.sendRequests(batch, signal),
+      { immediate: isServerless() });
   }
   /**
    * Record a call that is not being healed. An in-memory append: never awaited,
