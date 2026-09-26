@@ -65,7 +65,7 @@ The prompt adds the one-line install to your entry file and stops to let you pas
 
    TypeScript, ESM and CommonJS. Zero dependencies.
 
-4. Set your key in the environment of your app:
+4. Set your key in the environment of your app, or in the project's `.env`:
 
    ```sh
    export MNFST_KEY='your-project-key'
@@ -77,7 +77,7 @@ The prompt adds the one-line install to your entry file and stops to let you pas
    npx manifest doctor
    ```
 
-   It resolves the installed SDK version, masks and validates the key, checks that Manifest loads before your app, and prints the runtime coverage.
+   It reads the key from the shell, then from the project's `.env.local` or `.env`. It resolves the installed SDK version, masks and validates the key, checks that Manifest loads before your app, and prints the runtime coverage.
 
 Some clients keep the `fetch` they saw when they were built, and a client built at import time runs before your call. Where that happens, or where the start command is not yours to change, preload the SDK instead:
 

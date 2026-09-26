@@ -75,6 +75,8 @@ Run the doctor from the project directory. It checks the install without guessin
 npx manifest doctor
 ```
 
+It reads `MNFST_KEY` and `MNFST_URL` from the environment first, then from the project's `.env.local` or `.env` (the first file that sets a variable wins) — the files Next.js and `dotenv` keep them in.
+
 ```
   ✅ SDK installed          manifest 7.0.0
   ✅ MNFST_KEY set          mnfst_proj_…DZDw
