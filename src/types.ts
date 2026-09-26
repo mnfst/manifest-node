@@ -2,6 +2,13 @@ export interface ManifestOptions {
   key?: string;
   url?: string;
   onHeal?: (event: HealEvent) => void | Promise<void>;
+  /**
+   * Only these calls reach Manifest. Each entry is a domain (`stripe.com`, subdomains included)
+   * or a domain with a path (`stripe.com/v1/charges`). Default: `MNFST_ALLOWLIST`.
+   */
+  allowlist?: string[] | string;
+  /** These calls never reach Manifest; same entries as `allowlist`, and it wins. Default: `MNFST_DENYLIST`. */
+  denylist?: string[] | string;
 }
 export interface HealEvent {
   url: string;

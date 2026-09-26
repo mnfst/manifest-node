@@ -2,6 +2,7 @@ import { installHttp } from "./http.js";
 import { installUndici } from "./undici.js";
 import { Runtime } from "./runtime.js";
 import { warn } from "./api.js";
+import { resolveFilter } from "./filter.js";
 import type { ManifestOptions } from "./types.js";
 export type { ManifestOptions, HealEvent } from "./types.js";
 export { VERSION } from "./api.js";
@@ -31,13 +32,16 @@ export function manifest(options: ManifestOptions = {}): void {
     );
   }
   if (!url.pathname.endsWith("/")) url.pathname += "/";
-  const resolved = { ...options, key, url: url.toString() };
+  const { filter, invalid } = resolveFilter(options, process.env);
+  if (invalid.length > 0) warn(`Ignoring unreadable allowlist/denylist entries: ${invalid.join(", ")}`);
+  const resolved = { ...options, key, url: url.toString(), filter };
   const existing = globals[STATE];
   if (existing) {
     if (
       existing.options.key !== key ||
       existing.options.url !== resolved.url ||
-      existing.options.onHeal !== options.onHeal
+      existing.options.onHeal !== options.onHeal ||
+      JSON.stringify(existing.options.filter) !== JSON.stringify(filter)
     ) {
       warn(
         "Manifest is already configured; changing configuration requires a process restart"

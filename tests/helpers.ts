@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { once } from 'node:events';
 import { gzipSync } from 'node:zlib';
 import type { Capture, HealResult, Outcome, TrackedCall } from '../src/types.js';
-import { Runtime } from '../src/runtime.js';
+import { Runtime, type ResolvedOptions } from '../src/runtime.js';
 export const ATTEMPT = '33333333-3333-4333-8333-333333333333';
 export const error = { error: { message: 'range of limit should be [1, 100]', param: 'limit', code: 'invalid_value', type: 'validation_error' } };
 export async function jsonBody(request: IncomingMessage) {
@@ -35,7 +35,7 @@ export async function waitFor(predicate: () => boolean, timeoutMs = 3000): Promi
   }
   throw new Error('waitFor timed out');
 }
-export async function rig() {
+export async function rig(options: Partial<ResolvedOptions> = {}) {
   const captures: Capture[] = []; const outcomes: Outcome[] = []; const tracked: TrackedCall[] = [];
   const requests: { path: string; body: any; headers: IncomingMessage['headers'] }[] = [];
   const config: { result: HealResult; disabled: boolean; reportStatus: number; requestsStatus: number;
@@ -78,7 +78,7 @@ export async function rig() {
     }
     reply(res, 200, { received: body });
   });
-  const runtime = new Runtime({ key: 'project-key', url: api.url + '/' }, fetch);
+  const runtime = new Runtime({ key: 'project-key', url: api.url + '/', ...options }, fetch);
   return { api, provider, runtime, config, captures, outcomes, requests, tracked,
     close: async () => { await waitFor(() => runtime.api.pending.size === 0); await Promise.all([api.close(), provider.close()]); } };
 }
