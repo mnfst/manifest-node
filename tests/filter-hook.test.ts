@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { installHttp } from '../src/http.js';
-import { rig } from './helpers.js';
+import { rig, waitFor } from './helpers.js';
 
 const denied = { allow: null, deny: [{ host: '127.0.0.1', path: '/repair' }] };
 
@@ -36,4 +36,17 @@ test('node:http: a host off the allowlist is neither healed nor tracked', async 
   assert.equal(status, 400);
   assert.equal(r.captures.length, 0);
   assert.equal(r.tracked.length, 0);
+});
+
+test('a patch never sends the retry to a denied route', async t => {
+  const r = await rig({ filter: { allow: null, deny: [{ host: '127.0.0.1', path: '/private' }] } });
+  t.after(r.close);
+  r.config.result = { status: 'unverified', healAttemptId: '33333333-3333-4333-8333-333333333333',
+    healedRequest: { url: r.provider.url + '/private', body: { limit: 100 } } };
+  const response = await r.runtime.fetch(r.provider.url + '/repair', { method: 'POST', body: JSON.stringify({ limit: 500 }) });
+  assert.equal(response.status, 400);
+  assert.equal(r.captures.length, 1);
+  assert.deepEqual(r.requests.map(request => request.path), ['/repair']);
+  await waitFor(() => r.outcomes.length === 1);
+  assert.deepEqual(r.outcomes[0], { failure: { kind: 'not_attempted', message: 'replay_not_attempted' } });
 });
