@@ -1,0 +1,39 @@
+src/serverless.ts
+  s_b503847642b645::t_02811f56085744 1-35
+.changeset/serverless-delivery.md
+  s_b503847642b645::t_6dd6db2cd1dada 1-5
+CONTRACT.md
+  s_b503847642b645::t_b08b8c2f863178 74-76
+docs/guide.md
+  s_b503847642b645::t_66a37f91c7ab93 127
+src/api.ts
+  s_b503847642b645::t_2d39b7ea918d63 3,175-176
+src/runtime.ts
+  s_b503847642b645::t_1f91ca6ebdb62f 4,29-30
+src/tracking.ts
+  s_b503847642b645::t_25bd1f89ab83b2 1,8-12,34-36,41-42,50-51,83-98
+tests/fixtures/serverless.ts
+  s_b503847642b645::t_a5147c9bed1583 1-14
+tests/helpers.ts
+  s_b503847642b645::t_2e5afd302afdb8 42,44,60
+tests/serverless.test.ts
+  s_b503847642b645::t_b634c0c8f3c0d9 1-48
+tests/tracking.test.ts
+  s_b503847642b645::t_0e0209df45c77d 93-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6b37a4afa8823338bb6b7c2409ef1bc975d730e3",
+  "prompts": {},
+  "sessions": {
+    "s_b503847642b645": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21aa08e5-cc66-4e9d-bcc7-ccc1c8f7eb8d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
