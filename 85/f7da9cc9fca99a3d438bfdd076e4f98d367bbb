@@ -1,0 +1,50 @@
+src/filter.ts
+  s_de9546b9854ad9::t_820e287d8c70fd 1-58
+  s_de9546b9854ad9::t_6e87948ac6119a 59
+.changeset/allowlist-denylist.md
+  s_de9546b9854ad9::t_9881c606123cc8 1-5
+README.md
+  s_de9546b9854ad9::t_d9b6d5afe8073c 136-152
+docs/guide.md
+  s_de9546b9854ad9::t_69227981ba1583 9,16-17
+src/http.ts
+  s_fe3891dc77e122::t_d0a783e2897a8d 43,73-77
+src/index.ts
+  s_de9546b9854ad9::t_7cc0c2fff39ee4 4,34-36,42-43
+src/runtime.ts
+  s_de9546b9854ad9::t_43ae1c3cd7a314 5,21,46-49,51-52
+src/types.ts
+  s_de9546b9854ad9::t_14ddcd432a1d1f 5-11
+tests/filter-hook.test.ts
+  s_de9546b9854ad9::t_5b5dfac9c08f71 1-39
+tests/filter.test.ts
+  s_de9546b9854ad9::t_e3562e60b9f491 1-32
+tests/fixtures/url-filter.json
+  s_de9546b9854ad9::t_b6e0fa7df52c78 1-56
+tests/helpers.ts
+  s_fe3891dc77e122::t_100e239b46eb29 5,38,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "85f7da9cc9fca99a3d438bfdd076e4f98d367bbb",
+  "prompts": {},
+  "sessions": {
+    "s_de9546b9854ad9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "252ec711-d414-48ae-bddf-22b35395ba43",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    },
+    "s_fe3891dc77e122": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "220dc7e0-01dc-4ef0-bb3c-cfef8b560661",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
