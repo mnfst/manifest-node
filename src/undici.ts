@@ -38,8 +38,12 @@ export function installUndici(runtime: Runtime): () => void {
     const started = inFlight.get(request);
     if (!started) return;
     inFlight.delete(request);
-    runtime.track(request.method ?? 'GET', () => new URL(request.path ?? '/', String(request.origin)).href,
-      response.statusCode, started.startedAt, performance.now() - started.started);
+    let url: string;
+    try { url = new URL(request.path ?? '/', String(request.origin)).href; } catch { return; }
+    // The allowlist and denylist apply here as everywhere: an excluded call is never tracked.
+    if (runtime.excluded(url)) return;
+    runtime.track(request.method ?? 'GET', () => url, response.statusCode, started.startedAt,
+      performance.now() - started.started);
   };
   subscribe('undici:request:create', onCreate);
   subscribe('undici:request:headers', onHeaders);

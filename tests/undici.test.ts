@@ -64,3 +64,11 @@ test('uninstalling stops tracking', async t => {
   await r.runtime.tracker.flush();
   assert.deepEqual(r.tracked, []);
 });
+
+test('the allowlist and denylist apply to undici calls too', async t => {
+  const r = await rig({ filter: { allow: null, deny: [{ host: '127.0.0.1', path: '/denied' }] } });
+  t.after(r.close); t.after(installUndici(r.runtime));
+  for (const path of ['/denied', '/ok']) await (await undiciFetch(r.provider.url + path, { method: 'POST', body: '{}' })).text();
+  await r.runtime.tracker.flush();
+  assert.deepEqual(r.tracked.map(c => new URL(c.url).pathname), ['/ok']);
+});

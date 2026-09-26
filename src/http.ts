@@ -40,6 +40,7 @@ function wrapRequest(original: typeof http.request, protocol: 'http:' | 'https:'
 
     request.emit = ((event: string | symbol, ...values: unknown[]) => {
       if (event !== 'response') return emit(event, ...values);
+      if (excluded(runtime, request, protocol)) return emit(event, ...values);
       const response = values[0] as IncomingMessage;
       if (!eligible(response.statusCode ?? 0) || !runtime.api.canHeal()) {
         runtime.track(request.method, () => requestUrl(request, protocol).toString(), response.statusCode ?? 0,
@@ -66,6 +67,11 @@ async function handleResponse(runtime: Runtime, clientRequest: ClientRequest, in
   const response = webResponse(incoming, request.url);
   const healed = await runtime.handleResponse(request, response, body, performance.now() - started);
   return incomingResponse(healed, clientRequest);
+}
+
+/** Never throws into the caller: an unreadable URL is not excluded, like the fetch hook's. */
+function excluded(runtime: Runtime, request: ClientRequest, protocol: string): boolean {
+  try { return runtime.excluded(requestUrl(request, protocol).toString()); } catch { return false; }
 }
 
 /** The URL a ClientRequest was sent to, rebuilt the way `webRequest` does. */

@@ -4,6 +4,7 @@ import { captureRequest, captureResponse } from './capture.js';
 import { isServerless } from './serverless.js';
 import { CallBuffer } from './tracking.js';
 import { handled } from './undici.js';
+import { isExcluded, type UrlFilter } from './filter.js';
 import { isObject, mergeBody, safeHeaders, safeUrl, serializeRequestBody, trackedUrl, travelingBody, TRANSPORT_ERROR } from './wire.js';
 import type { Capture, Fetch, HealResult, ManifestOptions } from './types.js';
 // Only request-side failures are worth capturing. The forbidden statuses are
@@ -19,7 +20,7 @@ const bodyless = ['GET', 'HEAD', 'DELETE', 'OPTIONS'];
 const neverBodied = (method: string) => method === 'GET' || method === 'HEAD';
 export const eligible = (status: number): boolean =>
   status >= 400 && status < 500 && !forbidden.has(status);
-export interface ResolvedOptions extends ManifestOptions { key: string; url: string }
+export interface ResolvedOptions extends ManifestOptions { key: string; url: string; filter?: UrlFilter }
 
 export class Runtime {
   readonly api: HealApi;
@@ -46,10 +47,16 @@ export class Runtime {
         responseTimeMs: Math.round(responseTimeMs), occurredAt: new Date(startedAt).toISOString() });
     } catch { /* tracking never fails the caller's request */ }
   }
+  /** A call kept out of Manifest by the allowlist or denylist: never healed, never tracked. */
+  excluded(url: string): boolean {
+    return this.options.filter ? isExcluded(this.options.filter, url) : false;
+  }
   // Marked as handled, so the undici channels do not count this call (or its
   // retry) a second time.
   readonly fetch: Fetch = (input, init) => handled(() => this.send(input, init));
   private async send(input: Parameters<Fetch>[0], init: Parameters<Fetch>[1]): Promise<Response> {
+    const target = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (this.excluded(target)) return this.original(input, init);
     // Normalize once, consuming Request inputs in the same way fetch does.
     const request = new Request(input, init);
     const extras = { ...init }; delete extras.body; delete extras.headers;

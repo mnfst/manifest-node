@@ -6,13 +6,15 @@
 
 Call `manifest()` once at startup, before other libraries save a reference to `fetch`, `node:http` or `node:https`. Where a client is built at import time and would capture the original `fetch` first, [preload the register entry](#preloading) instead.
 
-It reads `MNFST_KEY` and `MNFST_URL` and takes no options.
+It reads `MNFST_KEY`, `MNFST_URL`, `MNFST_ALLOWLIST` and `MNFST_DENYLIST`; every option is optional.
 
 | Option | Environment | Default |
 | --- | --- | --- |
 | `key` | `MNFST_KEY` | Disabled with a warning if missing |
 | `url` | `MNFST_URL` | `https://api.manifest.build` |
 | `onHeal` | — | Optional local callback |
+| `allowlist` | `MNFST_ALLOWLIST` | Every call eligible ([entries](../README.md#choosing-which-calls-reach-manifest)) |
+| `denylist` | `MNFST_DENYLIST` | None excluded |
 
 Explicit options take precedence. Reconfiguration requires a restart. ESM and CommonJS imports share one process-wide installation; CommonJS uses `const { manifest } = require('manifest')`.
 
