@@ -1,6 +1,6 @@
 {
   "name": "manifest",
-  "version": "7.2.0",
+  "version": "7.2.1",
   "description": "Repair eligible failed API calls made by Node HTTP clients.",
   "type": "module",
   "main": "./dist/index.cjs",
