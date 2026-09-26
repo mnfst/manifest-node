@@ -1,4 +1,5 @@
 import { installHttp } from "./http.js";
+import { installUndici } from "./undici.js";
 import { Runtime } from "./runtime.js";
 import { warn } from "./api.js";
 import type { ManifestOptions } from "./types.js";
@@ -47,6 +48,7 @@ export function manifest(options: ManifestOptions = {}): void {
   const runtime = new Runtime(resolved, globalThis.fetch.bind(globalThis));
   globalThis.fetch = runtime.fetch;
   installHttp(runtime);
+  installUndici(runtime);
   globals[STATE] = runtime;
   // Announce the install, so that silence stops being ambiguous. Fire-and-
   // forget: it must never delay startup and never throw into the host app.

@@ -63,7 +63,7 @@ Reports are best effort, bounded, and observable through Node warnings with code
 
 ## Tracked requests
 
-Every call the SDK sees and does not send to `POST /v1/heal`, whatever its status (2xx, 3xx, 401, 402, 403, 429, 5xx, and a 4xx that is not sent for healing: after a redirect, while the project is disabled, or while all eight heal slots are busy), is recorded and sent in batches to `POST /v1/requests`:
+Every call the SDK sees and does not send to `POST /v1/heal`, whatever its status (2xx, 3xx, 401, 402, 403, 429, 5xx, and a 4xx that is not sent for healing: after a redirect, while the project is disabled, or while all eight heal slots are busy), is recorded and sent in batches to `POST /v1/requests`. So is every call made through the `undici` package directly or through a `fetch` reference saved before `manifest()` ran: the SDK observes those on undici's diagnostics channels, so they are tracked, never healed. The SDK's own calls to Manifest are never tracked.
 
 ```json
 {"requests":[{"traceId":"a-uuid","method":"POST","url":"https://example.com/orders","statusCode":200,"responseTimeMs":84,"occurredAt":"2026-09-23T10:14:07.512Z"}]}
