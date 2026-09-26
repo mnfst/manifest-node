@@ -39,9 +39,9 @@ export async function rig() {
   const captures: Capture[] = []; const outcomes: Outcome[] = []; const tracked: TrackedCall[] = [];
   const requests: { path: string; body: any; headers: IncomingMessage['headers'] }[] = [];
   const config: { result: HealResult; disabled: boolean; reportStatus: number; requestsStatus: number;
-    requestsDelayMs: number; finish?: () => void } = {
+    requestsDelayMs: number; reportDelayMs: number; finish?: () => void } = {
     result: { status: 'unverified', healAttemptId: ATTEMPT, healedRequest: { body: { limit: 100 } } }, disabled: false, reportStatus: 200,
-    requestsStatus: 202, requestsDelayMs: 0,
+    requestsStatus: 202, requestsDelayMs: 0, reportDelayMs: 0,
   };
   const api = await server(async (req, res) => {
     const body = await jsonBody(req);
@@ -57,6 +57,7 @@ export async function rig() {
       const valid = keys.length === 1 && (keys[0] === 'response' ? body.response.statusCode >= 200 && body.response.statusCode <= 599 :
         keys[0] === 'failure' && ['transport_error', 'not_attempted'].includes(body.failure.kind));
       if (!valid) { reply(res, 400, { error: 'contract mismatch' }); return; }
+      if (config.reportDelayMs) await new Promise(resolve => setTimeout(resolve, config.reportDelayMs));
       outcomes.push(body); reply(res, config.reportStatus, { status: 'recorded' });
     } else reply(res, 404, {});
   });

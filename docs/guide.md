@@ -124,7 +124,7 @@ Outcome reports are best effort, limited to 64 concurrent requests with five-sec
 
 ## Data sent to Manifest
 
-**Every call (metadata only).** For each call that is not healed, whatever its status, the SDK sends its method, URL without the query string, userinfo or fragment, status code, response time and time of the call. No headers and no bodies. Calls are batched and sent in the background, at most once per second; recording one never slows the call. Calls still buffered when a serverless runtime freezes the process can be lost.
+**Every call (metadata only).** For each call that is not healed, whatever its status, the SDK sends its method, URL without the query string, userinfo or fragment, status code, response time and time of the call. No headers and no bodies. Calls are batched and sent in the background, at most once per second; recording one never slows the call. On Vercel, AWS Lambda and Cloud Run, each call is sent as soon as it is recorded, and the function is kept alive until it is delivered.
 
 **Healable failures (full capture).** Failed URLs, request headers, JSON or form-urlencoded bodies, and raw error responses go to the configured server. Known credential names in query parameters and headers are masked; credential-named top-level request body fields are withheld and restored on retry. Exception prose is not sent for transport failures.
 

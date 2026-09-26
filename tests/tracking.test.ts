@@ -90,3 +90,39 @@ test('flush(deadline) gives up on a hanging server at the deadline', async () =>
   assert.equal(aborted, 1); // aborted once, never retried
   buf.stop();
 });
+
+test('immediate: sends the first call at once and hands the send to keepAlive', async () => {
+  const sent: TrackedCall[][] = []; const kept: Promise<unknown>[] = [];
+  const buf = new CallBuffer(async b => { sent.push(b); },
+    { intervalMs: 60_000, minGapMs: 0, immediate: true, keepAlive: p => { kept.push(p); } });
+  buf.record(call(1));
+  assert.equal(kept.length, 1);
+  await Promise.all(kept);
+  assert.deepEqual(sent.map(b => b.length), [1]);
+  buf.stop();
+});
+
+test('immediate: calls recorded during a send ride the same drain, batched', async () => {
+  const sent: TrackedCall[][] = []; const kept: Promise<unknown>[] = [];
+  const buf = new CallBuffer(async b => { sent.push(b); await new Promise(r => setTimeout(r, 30)); },
+    { intervalMs: 60_000, minGapMs: 0, immediate: true, keepAlive: p => { kept.push(p); } });
+  buf.record(call(1));
+  for (let i = 2; i <= 5; i++) buf.record(call(i));
+  await Promise.all(kept);
+  assert.equal(kept.length, 1);
+  assert.deepEqual(sent.map(b => b.length), [1, 4]);
+  buf.stop();
+});
+
+test('immediate: a call recorded as a drain settles starts the next one', async () => {
+  const sent: TrackedCall[][] = []; const kept: Promise<unknown>[] = [];
+  const buf = new CallBuffer(async b => { sent.push(b); },
+    { intervalMs: 60_000, minGapMs: 0, immediate: true, keepAlive: p => { kept.push(p); } });
+  buf.record(call(1));
+  await kept[0];
+  buf.record(call(2));
+  await Promise.all(kept);
+  assert.equal(kept.length, 2);
+  assert.deepEqual(sent.map(b => b.length), [1, 1]);
+  buf.stop();
+});

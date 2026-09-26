@@ -1,5 +1,6 @@
 import { captureResponse } from "./capture.js";
 import { boundedJson, isObject } from "./wire.js";
+import { keepAlive } from "./serverless.js";
 import type { Capture, Fetch, HealResult, Outcome, TrackedCall } from "./types.js";
 export const VERSION = "7.2.0";
 const MAX_HEALS_IN_FLIGHT = 8;
@@ -171,6 +172,8 @@ export class HealApi {
     const promise = this.send(id, outcome);
     this.pending.add(promise);
     void promise.then(() => this.pending.delete(promise));
+    // A serverless function freezes once it responds; let the platform wait.
+    keepAlive(promise);
   }
   private async send(id: string, outcome: Outcome): Promise<void> {
     const controller = new AbortController();
