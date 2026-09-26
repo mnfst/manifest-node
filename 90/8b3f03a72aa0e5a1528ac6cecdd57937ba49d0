@@ -1,0 +1,19 @@
+src/http.ts
+  s_b503847642b645::t_2bbbd3b8c6ad9c 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "908b3f03a72aa0e5a1528ac6cecdd57937ba49d0",
+  "prompts": {},
+  "sessions": {
+    "s_b503847642b645": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21aa08e5-cc66-4e9d-bcc7-ccc1c8f7eb8d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
