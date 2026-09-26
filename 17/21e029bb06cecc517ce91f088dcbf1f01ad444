@@ -1,0 +1,38 @@
+tests/undici.test.ts
+  s_b503847642b645::t_c9b0971a95b2a4 1-65
+  s_b503847642b645::t_32fc7d82e69126 66
+src/undici.ts
+  s_b503847642b645::t_4b4076fd6d6784 1-50
+.changeset/track-undici-calls.md
+  s_b503847642b645::t_2c027a4449ed44 1-5
+CONTRACT.md
+  s_b503847642b645::t_87220adb911d50 66
+docs/guide.md
+  s_b503847642b645::t_b689427b34cf5c 87,109,111
+package-lock.json
+  s_b503847642b645::t_7bfce5c29e6fa6 19-20,720-729,3090-3102
+package.json
+  s_b503847642b645::t_d43449756854c2 60-61
+src/cli.ts
+  s_b503847642b645::t_031378e9d737df 408
+src/index.ts
+  s_b503847642b645::t_f4b7c390665600 2,51
+src/runtime.ts
+  s_b503847642b645::t_cf954c07e278ef 6,30-31,49-52,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1721e029bb06cecc517ce91f088dcbf1f01ad444",
+  "prompts": {},
+  "sessions": {
+    "s_b503847642b645": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21aa08e5-cc66-4e9d-bcc7-ccc1c8f7eb8d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
