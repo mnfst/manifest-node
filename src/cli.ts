@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { VERSION } from "./api.js";
+import { readDotEnv } from "./dotenv.js";
 import { isObject } from "./wire.js";
 
 export type CheckStatus = "ok" | "fail" | "warn" | "skip";
@@ -304,6 +305,12 @@ function sdkCheck(cwd: string, injected?: string): DoctorCheck {
   return { label, status: "ok", detail: `manifest ${version}` };
 }
 
+/** Unset and blank both mean "not configured here" — an empty `MNFST_KEY=`
+ * left over from a template must not shadow the project's `.env`. */
+function nonBlank(value: string | undefined): string | undefined {
+  return value && value.trim() !== "" ? value : undefined;
+}
+
 /** Every check `manifest doctor` runs, as data, so it can be tested and
  * rendered without a terminal. */
 export async function runDoctor(
@@ -314,15 +321,20 @@ export async function runDoctor(
   const doFetch = options.fetch ?? globalThis.fetch;
   const checks: DoctorCheck[] = [sdkCheck(cwd, options.sdkVersion)];
 
-  const rawUrl = options.url ?? env.MNFST_URL ?? DEFAULT_URL;
+  // The app's own framework (Next.js, dotenv, `node --env-file`) loads the
+  // project's .env files into process.env; doctor runs as its own process,
+  // so a project that only sets the key there needs its files read too.
+  const dotenv = readDotEnv(cwd);
+  const rawUrl =
+    options.url ?? nonBlank(env.MNFST_URL) ?? dotenv.MNFST_URL ?? DEFAULT_URL;
   const url = normalizeBase(rawUrl);
-  const key = env.MNFST_KEY;
+  const key = nonBlank(env.MNFST_KEY) ?? dotenv.MNFST_KEY;
 
   if (!key) {
     checks.push({
       label: "MNFST_KEY set",
       status: "fail",
-      detail: "MNFST_KEY is not set",
+      detail: "MNFST_KEY is not set in the environment or the project's .env",
     });
   } else {
     checks.push({ label: "MNFST_KEY set", status: "ok", detail: maskKey(key) });

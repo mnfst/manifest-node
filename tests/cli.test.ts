@@ -190,6 +190,137 @@ test("no key skips validation and still reports coverage", async (t) => {
   assert.match(render(report), /Edge runtime/);
 });
 
+test("doctor reads the key from the project's .env", async (t) => {
+  const api = await server((_req, res) => reply(res, 200, { status: "ok" }));
+  const dir = await project({ start: "node app.js" });
+  await writeFile(
+    path.join(dir, ".env"),
+    `APP_NAME=demo\nMNFST_KEY=${KEY}\nMNFST_URL=${api.url}\n`
+  );
+  t.after(async () => {
+    await api.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const report = await runDoctor({ cwd: dir, env: {}, fetch, sdkVersion: "7.0.0" });
+  assert.equal(report.ok, true);
+  assert.deepEqual(check(report, "MNFST_KEY set"), {
+    label: "MNFST_KEY set",
+    status: "ok",
+    detail: maskKey(KEY),
+  });
+  assert.equal(check(report, "Key valid").status, "ok");
+});
+
+test(".env.local wins over .env", async (t) => {
+  const api = await server((_req, res) => reply(res, 200, { status: "ok" }));
+  const dir = await project({ start: "node app.js" });
+  const localKey = "mnfst_local_000000000000WXYZ";
+  await writeFile(
+    path.join(dir, ".env"),
+    `MNFST_KEY=mnfst_base_000000000000ABCD\nMNFST_URL=${api.url}\n`
+  );
+  await writeFile(path.join(dir, ".env.local"), `MNFST_KEY=${localKey}\n`);
+  t.after(async () => {
+    await api.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const report = await runDoctor({ cwd: dir, env: {}, fetch, sdkVersion: "7.0.0" });
+  // .env.local overrode the key; .env is still consulted for the URL it left unset.
+  assert.equal(check(report, "MNFST_KEY set").detail, maskKey(localKey));
+  assert.equal(check(report, "Key valid").status, "ok");
+});
+
+test("export and quotes in the project's .env are understood", async (t) => {
+  const api = await server((_req, res) => reply(res, 200, { status: "ok" }));
+  const dir = await project({ start: "node app.js" });
+  await writeFile(
+    path.join(dir, ".env"),
+    `export MNFST_KEY="${KEY}"\nexport MNFST_URL='${api.url}'\n`
+  );
+  t.after(async () => {
+    await api.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const report = await runDoctor({ cwd: dir, env: {}, fetch, sdkVersion: "7.0.0" });
+  assert.equal(report.ok, true);
+  assert.equal(check(report, "MNFST_KEY set").detail, maskKey(KEY));
+});
+
+test("comments in the project's .env are not values", async (t) => {
+  const api = await server((_req, res) => reply(res, 200, { status: "ok" }));
+  const dir = await project({ start: "node app.js" });
+  await writeFile(
+    path.join(dir, ".env"),
+    `# MNFST_KEY=mnfst_commented_000000000000NOPE\nMNFST_KEY=${KEY} # the project key\nMNFST_URL=${api.url}\n`
+  );
+  t.after(async () => {
+    await api.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const report = await runDoctor({ cwd: dir, env: {}, fetch, sdkVersion: "7.0.0" });
+  assert.equal(check(report, "MNFST_KEY set").detail, maskKey(KEY));
+});
+
+test("the environment wins over the project's .env", async (t) => {
+  const api = await server((_req, res) => reply(res, 200, { status: "ok" }));
+  const dir = await project({ start: "node app.js" });
+  await writeFile(
+    path.join(dir, ".env"),
+    "MNFST_KEY=mnfst_file_000000000000FILE\nMNFST_URL=http://127.0.0.1:9\n"
+  );
+  t.after(async () => {
+    await api.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const report = await runDoctor({
+    cwd: dir,
+    env: { MNFST_KEY: KEY, MNFST_URL: api.url },
+    fetch,
+    sdkVersion: "7.0.0",
+  });
+  // The URL from the environment was used, not the unreachable one in .env.
+  assert.equal(report.ok, true);
+  assert.equal(check(report, "MNFST_KEY set").detail, maskKey(KEY));
+  assert.equal(check(report, "Key valid").status, "ok");
+});
+
+test("an explicit --url option wins over the project's .env", async (t) => {
+  const api = await server((_req, res) => reply(res, 200, { status: "ok" }));
+  const dir = await project({ start: "node app.js" });
+  await writeFile(path.join(dir, ".env"), "MNFST_URL=http://127.0.0.1:9\n");
+  t.after(async () => {
+    await api.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const report = await runDoctor({
+    cwd: dir,
+    env: { MNFST_KEY: KEY },
+    url: api.url,
+    fetch,
+    sdkVersion: "7.0.0",
+  });
+  assert.equal(check(report, "Key valid").status, "ok");
+});
+
+test("a missing key's detail mentions the project's .env", async (t) => {
+  const dir = await project();
+  t.after(() => rm(dir, { recursive: true, force: true }));
+
+  const report = await runDoctor({ cwd: dir, env: {}, sdkVersion: "7.0.0" });
+  assert.equal(report.ok, false);
+  assert.deepEqual(check(report, "MNFST_KEY set"), {
+    label: "MNFST_KEY set",
+    status: "fail",
+    detail: "MNFST_KEY is not set in the environment or the project's .env",
+  });
+});
+
 test("zero requests is a warning, not a failure", async (t) => {
   const api = await server((_req, res) =>
     reply(res, 200, { projectName: "Quiet App", requests: 0 })
