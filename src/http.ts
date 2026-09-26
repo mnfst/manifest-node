@@ -69,12 +69,12 @@ async function handleResponse(runtime: Runtime, clientRequest: ClientRequest, in
   return incomingResponse(healed, clientRequest);
 }
 
-/** The URL a ClientRequest was sent to, rebuilt the way `webRequest` does. */
 /** Never throws into the caller: an unreadable URL is not excluded, like the fetch hook's. */
 function excluded(runtime: Runtime, request: ClientRequest, protocol: string): boolean {
   try { return runtime.excluded(requestUrl(request, protocol).toString()); } catch { return false; }
 }
 
+/** The URL a ClientRequest was sent to, rebuilt the way `webRequest` does. */
 function requestUrl(request: ClientRequest, protocol: string): URL {
   const authority = String(request.getHeader('host') ?? request.host);
   return new URL(request.path, `${protocol}//${authority}`);
