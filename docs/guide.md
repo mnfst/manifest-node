@@ -86,7 +86,7 @@ It reads `MNFST_KEY` and `MNFST_URL` from the environment first, then from the p
   ⚠️ Requests received      no requests received yet
 
 Runtime coverage
-  Node.js runtime   fetch, http.request, https.request, http.get are patched
+  Node.js runtime   fetch, http.request, https.request, http.get are patched; undici is tracked
   Edge runtime      not supported — middleware.ts and Edge route handlers are never covered
 ```
 
@@ -108,8 +108,9 @@ You can also verify by hand: send a JSON request that your test API rejects with
 - One retry per capture. Same-origin URL and header repairs are supported by the SDK; the current app returns structured body repairs.
 - Successful calls and successful retries remain streamed. Failed responses retain their bytes, status, headers, URL and redirect metadata.
 - Every call that is not healed, whatever its status, is tracked as metadata only and sent in batches, off the request path (see "Data sent to Manifest").
+- Calls made through the `undici` package directly (its `fetch` or `request`, as `@vercel/blob` does) and through a `fetch` reference saved before initialization are **tracked, not healed**: the SDK observes them on undici's diagnostics channels, which can see a response but not replace it.
 
-**Not covered:** browser JavaScript, HTTP/2, directly imported `undici.fetch`, and `fetch` references saved before initialization (see `manifest/register` above). Those transports need separate integration. This SDK does not claim to intercept every Node HTTP client.
+**Not covered:** browser JavaScript and HTTP/2. Those transports need separate integration. This SDK does not claim to intercept every Node HTTP client.
 
 ## Limits and failure behavior
 

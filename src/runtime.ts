@@ -3,6 +3,7 @@ import { HealApi, warn } from './api.js';
 import { captureRequest, captureResponse } from './capture.js';
 import { isServerless } from './serverless.js';
 import { CallBuffer } from './tracking.js';
+import { handled } from './undici.js';
 import { isObject, mergeBody, safeHeaders, safeUrl, serializeRequestBody, trackedUrl, travelingBody, TRANSPORT_ERROR } from './wire.js';
 import type { Capture, Fetch, HealResult, ManifestOptions } from './types.js';
 // Only request-side failures are worth capturing. The forbidden statuses are
@@ -26,7 +27,8 @@ export class Runtime {
   readonly tracker: CallBuffer;
   constructor(readonly options: ResolvedOptions, private original: Fetch, api?: HealApi) {
     this.api = api ?? new HealApi(original, options.key, options.url);
-    this.tracker = new CallBuffer((batch, signal) => this.api.sendRequests(batch, signal),
+    // Handled, so the undici channels never track a batch of tracked calls.
+    this.tracker = new CallBuffer((batch, signal) => handled(() => this.api.sendRequests(batch, signal)),
       { immediate: isServerless() });
   }
   /**
@@ -44,7 +46,10 @@ export class Runtime {
         responseTimeMs: Math.round(responseTimeMs), occurredAt: new Date(startedAt).toISOString() });
     } catch { /* tracking never fails the caller's request */ }
   }
-  readonly fetch: Fetch = async (input, init) => {
+  // Marked as handled, so the undici channels do not count this call (or its
+  // retry) a second time.
+  readonly fetch: Fetch = (input, init) => handled(() => this.send(input, init));
+  private async send(input: Parameters<Fetch>[0], init: Parameters<Fetch>[1]): Promise<Response> {
     // Normalize once, consuming Request inputs in the same way fetch does.
     const request = new Request(input, init);
     const extras = { ...init }; delete extras.body; delete extras.headers;
@@ -60,7 +65,7 @@ export class Runtime {
       return response;
     }
     return this.handleResponse(request, response, await bodyPromise, responseTimeMs, extras);
-  };
+  }
   async handleResponse(request: Request, response: Response, body: { body: unknown; complete: boolean },
     responseTimeMs: number, extras: RequestInit = {}): Promise<Response> {
     if (!eligible(response.status) || response.redirected || !this.api.enabled()) return response;

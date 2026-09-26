@@ -417,7 +417,7 @@ export function render(report: DoctorReport): string {
   lines.push("");
   lines.push("Runtime coverage");
   lines.push(
-    "  Node.js runtime   fetch, http.request, https.request, http.get are patched"
+    "  Node.js runtime   fetch, http.request, https.request, http.get are patched; undici is tracked"
   );
   lines.push(
     "  Edge runtime      not supported — middleware.ts and Edge route handlers are never covered"
