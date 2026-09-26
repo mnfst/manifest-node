@@ -19,7 +19,8 @@ export function parseRule(entry: string): Rule | null {
   const host = authority.replace(/^\*\./, '').replace(/:\d+$/, '').replace(/^\.+|\.+$/g, '');
   // `*` inside a path is reserved for a future segment wildcard, so it is refused today.
   if (!HOST.test(host) || path.includes('*')) return null;
-  return { host: host.replace(/^\[|\]$/g, ''), path: path || null };
+  const canonical = path ? canonicalPath(path) : '/';
+  return { host: host.replace(/^\[|\]$/g, ''), path: canonical === '/' ? null : canonical };
 }
 
 const entries = (value: RuleList) =>
@@ -42,6 +43,21 @@ export function resolveFilter(options: { allowlist?: RuleList; denylist?: RuleLi
   return { filter: { allow: allow.given ? allow.rules : null, deny: deny.rules }, invalid };
 }
 
+/**
+ * The path a server is likely to route: every percent-escape decoded (so `/%70rivate` and
+ * `/private%2Fitem` read as `/private…`) and `.`/`..` segments resolved. Rules compare
+ * against it, so an encoded spelling cannot slip past a denylist or into an allowlist.
+ */
+export function canonicalPath(path: string): string {
+  const decoded = path.replace(/%[0-9a-f]{2}/gi, e => String.fromCharCode(parseInt(e.slice(1), 16)));
+  const out: string[] = [];
+  for (const segment of decoded.split('/').slice(1)) {
+    if (segment === '..') out.pop();
+    else if (segment !== '.') out.push(segment);
+  }
+  return '/' + out.join('/');
+}
+
 const covers = (rule: Rule, host: string, path: string) =>
   (host === rule.host || host.endsWith('.' + rule.host)) &&
   (rule.path === null || path === rule.path || path.startsWith(rule.path + '/'));
@@ -52,7 +68,7 @@ export function isExcluded(filter: UrlFilter, url: string): boolean {
   try {
     const parsed = new URL(url);
     host = parsed.hostname.toLowerCase().replace(/\.$/, '').replace(/^\[|\]$/g, '');
-    path = parsed.pathname || '/';
+    path = canonicalPath(parsed.pathname || '/');
   } catch { return false; }
   if (filter.deny.some(r => covers(r, host, path))) return true;
   return filter.allow !== null && !filter.allow.some(r => covers(r, host, path));

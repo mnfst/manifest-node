@@ -34,15 +34,15 @@ test('ESM and CommonJS share one installation and expose manifest without compat
   assert.equal(execFileSync(process.execPath, ['--input-type=module', '-e', script], { encoding: 'utf8' }), '');
 });
 
-test('missing key does not install and invalid configuration is rejected', () => {
+test('missing key or invalid configuration does not install and never throws', () => {
   const script = `
     import assert from 'node:assert/strict';
     import {manifest} from './dist/index.js';
     delete process.env.MNFST_KEY;
     const original = fetch;
     manifest(); assert.equal(fetch, original);
-    assert.throws(() => manifest({key:'test',url:'file:///tmp'}), TypeError);
-    assert.equal(fetch, original);
+    manifest({key:'test',url:'file:///tmp'}); assert.equal(fetch, original);
+    manifest({key:'test',url:'not a url'}); assert.equal(fetch, original);
   `;
   execFileSync(process.execPath, ['--input-type=module', '-e', script], { stdio: 'pipe' });
 });

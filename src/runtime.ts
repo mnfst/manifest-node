@@ -97,7 +97,7 @@ export class Runtime {
       request.signal.throwIfAborted();
       result = await this.api.heal(payload, request.signal);
       request.signal.throwIfAborted();
-      const retry = body.complete && captured.complete ? buildRetry(request, body.body, result) : null;
+      const retry = body.complete && captured.complete ? buildRetry(request, body.body, result, url => this.excluded(url)) : null;
       if (!retry) {
         this.api.report(result?.healAttemptId, { failure: { kind: 'not_attempted', message: 'replay_not_attempted' } });
         return response;
@@ -137,13 +137,16 @@ export class Runtime {
   }
 }
 
-function buildRetry(request: Request, originalBody: unknown, result: HealResult | null): Request | null {
+function buildRetry(request: Request, originalBody: unknown, result: HealResult | null,
+  excluded: (url: string) => boolean): Request | null {
   if (!result || !['patched', 'unverified'].includes(result.status) || !isObject(result.healedRequest)) return null;
   const healed = result.healedRequest;
   if (!['url', 'headers', 'body'].some(key => Object.hasOwn(healed, key))) return null;
   try {
     const url = new URL(healed.url ?? request.url);
     if (url.origin !== new URL(request.url).origin || url.username || url.password) return null;
+    // A patched path is filtered like any other call: a retry never goes where the lists forbid.
+    if (excluded(url.href)) return null;
     const headers = new Headers(request.headers);
     const contentType = headers.get('content-type');
     headers.delete('content-length');

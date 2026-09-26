@@ -104,6 +104,7 @@ You can also verify by hand: send a JSON request that your test API rejects with
 
 - Built-in global `fetch`, including `Request` inputs and libraries that call global fetch after installation.
 - `node:http` and `node:https`, including Axios with its default HTTP adapter and `node-fetch`.
+- A `node:http` call is healed only when a `fetch` retry would reach the same server the same way. A `Host` header naming another server, a proxy agent, TLS options (`ca`, `cert`, `rejectUnauthorized: false`), `lookup` or `socketPath` keep the call tracked, not healed. So does a method `fetch` refuses, such as `TRACE`.
 - Failures after automatic redirects pass through: the original method/body may not describe the failing hop.
 - Captures any 4xx except 401, 402, 403 and 429. Those four, every 5xx, and network failures before an HTTP response pass through: authentication, billing, rate limiting and server faults are not things editing the request can fix.
 - JSON and `application/x-www-form-urlencoded` APIs, including nested form fields. No provider-specific request format is required.

@@ -19,6 +19,8 @@ import type { Runtime } from './runtime.js';
 const handling = new AsyncLocalStorage<true>();
 
 export const handled = <T>(work: () => T): T => handling.run(true, work);
+/** Whether the current call is the SDK's own work, or a call the runtime already handles. */
+export const isHandled = (): boolean => handling.getStore() === true;
 
 interface UndiciRequest { method?: string; origin?: unknown; path?: string }
 interface Started { startedAt: number; started: number }

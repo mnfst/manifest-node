@@ -1,11 +1,13 @@
 import http, { type ClientRequest, type IncomingHttpHeaders, type IncomingMessage } from 'node:http';
 import https from 'node:https';
 import { syncBuiltinESMExports } from 'node:module';
+import { urlToHttpOptions } from 'node:url';
 import { Readable } from 'node:stream';
 import { createBrotliDecompress, createUnzip } from 'node:zlib';
 import { parseRequestBody, serializeRequestBody } from './wire.js';
 import { REQUEST_LIMIT } from './capture.js';
 import { eligible, type Runtime } from './runtime.js';
+import { handled, isHandled } from './undici.js';
 type RequestArgs = Parameters<typeof http.request>;
 type RequestCallback = (response: IncomingMessage) => void;
 
@@ -28,6 +30,7 @@ function wrapGet(request: typeof http.request): typeof http.get {
 }
 
 function wrapRequest(original: typeof http.request, protocol: 'http:' | 'https:', runtime: Runtime): typeof http.request {
+  const manifestOrigin = new URL(runtime.options.url).origin;
   return ((...received: RequestArgs) => {
     const args = [...received] as unknown[];
     const callback = typeof args.at(-1) === 'function' ? args.pop() as RequestCallback : undefined;
@@ -36,18 +39,24 @@ function wrapRequest(original: typeof http.request, protocol: 'http:' | 'https:'
     const request = original(...args as RequestArgs);
     const capture = captureBody(request);
     const signal = cancellation(request, requestSignal(args));
+    const target = connectionTarget(args, protocol, request);
     const emit = request.emit.bind(request);
 
     request.emit = ((event: string | symbol, ...values: unknown[]) => {
       if (event !== 'response') return emit(event, ...values);
-      if (excluded(runtime, request, protocol)) return emit(event, ...values);
+      // The SDK's own calls, and the calls it already handles, when fetch itself runs on node:http.
+      if (isHandled() || target.origin === manifestOrigin) return emit(event, ...values);
+      const urls = requestUrls(request, target);
+      if (urls.length === 0 || urls.some(url => runtime.excluded(url.href))) return emit(event, ...values);
       const response = values[0] as IncomingMessage;
-      if (!eligible(response.statusCode ?? 0) || !runtime.api.canHeal()) {
-        runtime.track(request.method, () => requestUrl(request, protocol).toString(), response.statusCode ?? 0,
-          startedAt, performance.now() - started);
+      const status = response.statusCode ?? 0;
+      const web = eligible(status) && target.replayable && urls.length === 1 && runtime.api.canHeal()
+        ? convertRequest(request, urls[0]!, capture, signal) : null;
+      if (!web) {
+        runtime.track(request.method, () => urls[0]!.href, status, startedAt, performance.now() - started);
         return emit(event, ...values);
       }
-      void handleResponse(runtime, request, response, protocol, capture.body(), signal, started)
+      void handled(() => handleResponse(runtime, web, request, response, started))
         .then(healed => emit('response', healed))
         .catch(error => {
           response.destroy();
@@ -61,26 +70,90 @@ function wrapRequest(original: typeof http.request, protocol: 'http:' | 'https:'
   }) as typeof http.request;
 }
 
-async function handleResponse(runtime: Runtime, clientRequest: ClientRequest, incoming: IncomingMessage,
-  protocol: string, body: { body: unknown; complete: boolean }, signal: AbortSignal, started: number): Promise<IncomingMessage> {
-  const request = webRequest(clientRequest, protocol, body, signal);
-  const response = webResponse(incoming, request.url);
-  const healed = await runtime.handleResponse(request, response, body, performance.now() - started);
+interface Converted { request: Request; body: { body: unknown; complete: boolean } }
+
+async function handleResponse(runtime: Runtime, converted: Converted, clientRequest: ClientRequest,
+  incoming: IncomingMessage, started: number): Promise<IncomingMessage> {
+  const response = webResponse(incoming, converted.request.url);
+  const healed = await runtime.handleResponse(converted.request, response, converted.body, performance.now() - started);
   return incomingResponse(healed, clientRequest);
 }
 
-/** Never throws into the caller: an unreadable URL is not excluded, like the fetch hook's. */
-function excluded(runtime: Runtime, request: ClientRequest, protocol: string): boolean {
-  try { return runtime.excluded(requestUrl(request, protocol).toString()); } catch { return false; }
+/**
+ * The fetch Request a healable call is replayed from, or null when it cannot be built
+ * (a method fetch refuses, such as TRACE): the caller then gets the original response.
+ */
+function convertRequest(request: ClientRequest, url: URL, capture: ReturnType<typeof captureBody>,
+  signal: AbortSignal): Converted | null {
+  try {
+    const body = capture.body();
+    return { request: webRequest(request, url, body, signal), body };
+  } catch { return null; }
 }
 
-/** The URL a ClientRequest was sent to, rebuilt the way `webRequest` does. */
-function requestUrl(request: ClientRequest, protocol: string): URL {
-  const authority = String(request.getHeader('host') ?? request.host);
-  return new URL(request.path, `${protocol}//${authority}`);
+// Options a fetch replay cannot carry: a retry without them would reach another
+// server, or the same one without the caller's certificate, proxy or socket.
+const TRANSPORT_OPTIONS = ['socketPath', 'createConnection', 'lookup', 'localAddress', 'localPort',
+  'ca', 'cert', 'key', 'pfx', 'passphrase', 'servername', 'checkServerIdentity', 'secureContext',
+  'ciphers', 'minVersion', 'maxVersion', 'secureOptions', 'secureProtocol'];
+
+const customTransport = (options: Record<string, unknown>) =>
+  TRANSPORT_OPTIONS.some(name => options[name] !== undefined) || options.rejectUnauthorized === false;
+
+/**
+ * An agent a fetch replay loses nothing by skipping: node's own, or a keep-alive
+ * subclass such as agentkeepalive (the OpenAI and Anthropic SDKs' default). A proxy
+ * agent (agent-base's `connect`, a `proxy` field, its own `createSocket`) or one
+ * built with TLS or socket options is not.
+ */
+function plainAgent(agent: http.Agent & { options?: Record<string, unknown> }): boolean {
+  if (agent === http.globalAgent || agent === https.globalAgent) return true;
+  const candidate = agent as unknown as Record<string, unknown>;
+  return agent instanceof http.Agent && typeof candidate.connect !== 'function' && !('proxy' in candidate) &&
+    candidate.createSocket === (http.Agent.prototype as unknown as Record<string, unknown>).createSocket &&
+    !customTransport(agent.options ?? {});
 }
 
-function webRequest(request: ClientRequest, protocol: string, captured: { body: unknown; complete: boolean }, signal: AbortSignal): Request {
+/** Where the request really connects, and whether a fetch replay would reach it the same way. */
+interface Target { origin: string | null; replayable: boolean }
+
+function connectionTarget(args: unknown[], protocol: string, request: ClientRequest): Target {
+  try {
+    let options: Record<string, unknown> = {};
+    for (const arg of args.slice(0, 2)) {
+      if (typeof arg === 'string') options = { ...urlToHttpOptions(new URL(arg)) };
+      else if (arg instanceof URL) options = { ...urlToHttpOptions(arg) };
+      else if (arg && typeof arg === 'object') options = { ...options, ...arg as Record<string, unknown> };
+    }
+    if (options.socketPath !== undefined) return { origin: null, replayable: false };
+    const agent = options.agent as (http.Agent & { options?: Record<string, unknown>; defaultPort?: number }) | false | undefined;
+    const standardAgent = agent === undefined || agent === false || plainAgent(agent);
+    const port = Number(options.port || options.defaultPort || (agent && agent.defaultPort) || (protocol === 'https:' ? 443 : 80));
+    const host = request.host.includes(':') ? `[${request.host}]` : request.host;
+    const origin = new URL(`${protocol}//${host}:${port}`).origin;
+    return { origin, replayable: standardAgent && !customTransport(options) };
+  } catch { return { origin: null, replayable: false }; }
+}
+
+/**
+ * The URL the request connects to, then the one its Host header names when that differs.
+ * Both are filtered; only a request whose two agree is healed, so a retry can never go
+ * to the Host header's server while the original went to another.
+ */
+function requestUrls(request: ClientRequest, target: Target): URL[] {
+  const urls: URL[] = [];
+  try {
+    if (target.origin) urls.push(new URL(request.path, target.origin));
+    const header = request.getHeader('host');
+    if (header !== undefined) {
+      const named = new URL(request.path, `${new URL(target.origin ?? 'http://localhost').protocol}//${String(header)}`);
+      if (!target.origin || named.origin !== target.origin) urls.push(named);
+    }
+  } catch { /* an unreadable address is neither filtered nor healed */ }
+  return urls;
+}
+
+function webRequest(request: ClientRequest, url: URL, captured: { body: unknown; complete: boolean }, signal: AbortSignal): Request {
   const headers = new Headers();
   for (const name of request.getHeaderNames()) {
     const value = request.getHeader(name);
@@ -88,7 +161,6 @@ function webRequest(request: ClientRequest, protocol: string, captured: { body: 
       if (item !== undefined) headers.append(name, String(item));
     }
   }
-  const url = requestUrl(request, protocol);
   const method = request.method;
   return new Request(url, {
     method, headers, signal,
