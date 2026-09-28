@@ -1,0 +1,35 @@
+tests/masking.test.ts
+  s_1433fd65404e08::t_3c1a5323933fb0 1-109
+src/masked.ts
+  s_1433fd65404e08::t_0f58f70cca6fbf 1-174
+CONTRACT.md
+  s_1433fd65404e08::t_73824ce35b11ca 30,36
+docs/guide.md
+  s_1433fd65404e08::t_b419afa3425faa 32,133,135,137
+package-lock.json
+  s_1433fd65404e08::t_029a0b14ab29fc 10-12,29-36,874-877
+package.json
+  s_1433fd65404e08::t_47b3f90d3e31ef 69-71
+src/runtime.ts
+  s_1433fd65404e08::t_5af6b7004941d1 8-9,42-44,94,97-98,104,121-122,135,146,151-154,162-164,166,168-169
+tests/capture.test.ts
+  s_1433fd65404e08::t_3dd7f8a0180fbd 4-5,38-40,43
+tests/runtime.test.ts
+  s_1433fd65404e08::t_2f984616dcdb18 14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "36cae368ac4815a79399bbd8273913475207a451",
+  "prompts": {},
+  "sessions": {
+    "s_1433fd65404e08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a8378c-067e-4760-88dd-c36de472f5b5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Guillaume Gay <guillaume.gay@protonmail.com>"
+    }
+  }
+}
