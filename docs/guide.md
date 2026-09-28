@@ -29,7 +29,7 @@ manifest({
 });
 ```
 
-`onHeal` receives `url`, `statusCode`, `healStatus`, `replayStatusCode`, `healMs` and optional `operations`. URLs have known credential query fields masked. Callback errors do not fail application requests.
+`onHeal` receives `url`, `statusCode`, `healStatus`, `replayStatusCode`, `healMs` and optional `operations`. URLs are masked like the heal payload and carry no userinfo. Callback errors do not fail application requests.
 
 ## Preloading
 
@@ -130,11 +130,11 @@ Outcome reports are best effort, limited to 64 concurrent requests with five-sec
 
 ## Data sent to Manifest
 
-**Every call (metadata only).** For each call that is not healed, whatever its status, the SDK sends its method, URL without the query string, userinfo or fragment, status code, response time and time of the call. No headers and no bodies. Calls are batched and sent in the background, at most once per second; recording one never slows the call. On Vercel, AWS Lambda and Cloud Run, each call is sent as soon as it is recorded, and the function is kept alive until it is delivered.
+**Every call (metadata only).** For each call that is not healed, whatever its status, the SDK sends its method, URL without the query string, userinfo or fragment (a secret in the path, like a webhook token, is replaced by `REDACTED`), status code, response time and time of the call. No headers and no bodies. Calls are batched and sent in the background, at most once per second; recording one never slows the call. On Vercel, AWS Lambda and Cloud Run, each call is sent as soon as it is recorded, and the function is kept alive until it is delivered.
 
-**Healable failures (full capture).** Failed URLs, request headers, JSON or form-urlencoded bodies, and raw error responses go to the configured server. Known credential names in query parameters and headers are masked; credential-named top-level request body fields are withheld and restored on retry. Exception prose is not sent for transport failures.
+**Healable failures (full capture).** Failed URLs, request headers (never cookies), JSON or form-urlencoded bodies, and error responses go to the configured server. Credential values are replaced by `REDACTED` in the process, before anything is sent, by [`@mnfst/http-redact`](https://github.com/mnfst/http-redact#what-is-masked): `Authorization` (the scheme stays), API keys in headers and query, OAuth values, passwords, vendor keys and tokens wherever they appear, at any depth in a body. The retry puts the real values back locally. Exception prose is not sent for transport failures.
 
-This is not general secret detection: nested fields, arbitrary secret names, business data and response bodies may contain sensitive information. Enable it only for traffic you permit Manifest to process and store. The SDK makes the actual retry locally.
+Business data that is not a credential (names, emails, order contents) is not masked. Enable healing only for traffic you permit Manifest to process and store.
 
 ## Development
 

@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { captureResponse } from '../src/capture.js';
-import { boundedJson, mergeBody, parseRequestBody, safeUrl, serializeRequestBody } from '../src/wire.js';
+import { boundedJson, parseRequestBody, serializeRequestBody } from '../src/wire.js';
+import { maskRequest, maskUrl, restoreBody } from '../src/masked.js';
 
 test('bounded prefix replays every original byte', async () => {
   let reads = 0;
@@ -34,10 +35,12 @@ test('JSON depth is bounded and credential restoration is prototype-safe', () =>
   let value: unknown = {};
   for (let i = 0; i < 70; i++) value = { child: value };
   assert.equal(boundedJson(value), false);
-  const result = mergeBody(JSON.parse('{"apiKey":"secret","old":true}'), JSON.parse('{"__proto__":{"polluted":true},"new":true}'));
+  const original = JSON.parse('{"apiKey":"secret","old":true}');
+  const sent = maskRequest('POST', 'https://example.com/', new Headers(), original);
+  const result = restoreBody(original, sent, JSON.parse('{"__proto__":{"polluted":true},"new":true}'));
   assert.equal(({} as { polluted?: boolean }).polluted, undefined);
   assert.deepEqual(JSON.parse(JSON.stringify(result)), { apiKey: 'secret', ...JSON.parse('{"__proto__":{"polluted":true},"new":true}') });
-  assert.equal(safeUrl('https://u:p@example.com/path?token=secret#private'), 'https://example.com/path?token=REDACTED');
+  assert.equal(maskUrl('https://u:p@example.com/path?token=secret#private'), 'https://example.com/path?token=REDACTED#private');
 });
 
 test('form-urlencoded bodies parse and serialize nested fields', () => {

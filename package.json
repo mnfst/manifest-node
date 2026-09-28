@@ -66,5 +66,8 @@
   },
   "overrides": {
     "esbuild": "^0.28.2"
+  },
+  "dependencies": {
+    "@mnfst/http-redact": "file:../http-redact/packages/js"
   }
 }

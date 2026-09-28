@@ -5,7 +5,8 @@ import { isServerless } from './serverless.js';
 import { CallBuffer } from './tracking.js';
 import { handled } from './undici.js';
 import { isExcluded, type UrlFilter } from './filter.js';
-import { isObject, mergeBody, safeHeaders, safeUrl, serializeRequestBody, trackedUrl, travelingBody, TRANSPORT_ERROR } from './wire.js';
+import { isObject, serializeRequestBody, trackedUrl, TRANSPORT_ERROR } from './wire.js';
+import { maskRequest, maskResponse, maskUrl, restoreBody, restoreHeaders, restoreUrl, type Masked } from './masked.js';
 import type { Capture, Fetch, HealResult, ManifestOptions } from './types.js';
 // Only request-side failures are worth capturing. The forbidden statuses are
 // the ones editing the request cannot fix: 401/403 (auth), 402 (billing),
@@ -38,7 +39,9 @@ export class Runtime {
    */
   track(method: string, url: () => string, statusCode: number, startedAt: number, responseTimeMs: number): void {
     try {
-      const reported = trackedUrl(url());
+      // A secret in the path (a webhook token) is masked here, before the call is buffered.
+      const stripped = trackedUrl(url());
+      const reported = stripped && maskUrl(stripped);
       const verb = method.toUpperCase();
       // The server refuses a whole batch over one out-of-range record.
       if (!reported || reported.length > 4096 || !verb || verb.length > 16 ||
@@ -88,16 +91,17 @@ export class Runtime {
     try {
       const captured = await captureResponse(response);
       response = captured.response;
+      const sent = maskRequest(request.method, request.url, request.headers, body.body);
       const payload: Capture = {
         traceId: randomUUID(),
-        request: { method: request.method, url: safeUrl(request.url), headers: safeHeaders(request.headers), body: travelingBody(body.body) },
-        response: { statusCode: response.status, body: captured.body, truncated: captured.truncated },
+        request: { method: request.method, url: sent.url, headers: sent.headers, body: sent.body },
+        response: { statusCode: response.status, body: maskResponse(captured.body), truncated: captured.truncated },
         responseTimeMs: Math.round(responseTimeMs),
       };
       request.signal.throwIfAborted();
       result = await this.api.heal(payload, request.signal);
       request.signal.throwIfAborted();
-      const retry = body.complete && captured.complete ? buildRetry(request, body.body, result, url => this.excluded(url)) : null;
+      const retry = body.complete && captured.complete ? buildRetry(request, body.body, result, url => this.excluded(url), sent) : null;
       if (!retry) {
         this.api.report(result?.healAttemptId, { failure: { kind: 'not_attempted', message: 'replay_not_attempted' } });
         return response;
@@ -114,7 +118,8 @@ export class Runtime {
       if (retried.status >= 400) {
         const capturedRetry = await captureResponse(retried);
         retried = capturedRetry.response;
-        this.api.report(result?.healAttemptId, { response: { statusCode: retried.status, body: capturedRetry.body, truncated: capturedRetry.truncated } });
+        // The retry's error body travels too: masked like the first one.
+        this.api.report(result?.healAttemptId, { response: { statusCode: retried.status, body: maskResponse(capturedRetry.body), truncated: capturedRetry.truncated } });
       } else {
         this.api.report(result?.healAttemptId, { response: { statusCode: retried.status } });
       }
@@ -127,7 +132,7 @@ export class Runtime {
     } finally {
       if (this.options.onHeal) {
         try {
-          void Promise.resolve(this.options.onHeal({ url: safeUrl(request.url), statusCode: original.status,
+          void Promise.resolve(this.options.onHeal({ url: maskUrl(request.url), statusCode: original.status,
             healStatus: replayAttempted && replayStatusCode === null ? 'replay_failed' : result?.status ?? 'heal_unreachable', replayStatusCode,
             healMs: Math.round(performance.now() - started), operations: result?.operations }))
             .catch(() => warn('onHeal callback failed'));
@@ -138,12 +143,15 @@ export class Runtime {
 }
 
 function buildRetry(request: Request, originalBody: unknown, result: HealResult | null,
-  excluded: (url: string) => boolean): Request | null {
+  excluded: (url: string) => boolean, sent: Masked): Request | null {
   if (!result || !['patched', 'unverified'].includes(result.status) || !isObject(result.healedRequest)) return null;
   const healed = result.healedRequest;
   if (!['url', 'headers', 'body'].some(key => Object.hasOwn(healed, key))) return null;
   try {
-    const url = new URL(healed.url ?? request.url);
+    // Masked path segments and query values are put back; a mask with no original refuses the retry.
+    const restoredUrl = healed.url === undefined ? request.url : restoreUrl(request.url, healed.url, sent);
+    if (restoredUrl === null) return null;
+    const url = new URL(restoredUrl);
     if (url.origin !== new URL(request.url).origin || url.username || url.password) return null;
     // A patched path is filtered like any other call: a retry never goes where the lists forbid.
     if (excluded(url.href)) return null;
@@ -151,12 +159,14 @@ function buildRetry(request: Request, originalBody: unknown, result: HealResult 
     const contentType = headers.get('content-type');
     headers.delete('content-length');
     if (healed.headers !== undefined && !isObject(healed.headers)) return null;
-    for (const [name, value] of Object.entries(healed.headers ?? {})) {
+    const changes = restoreHeaders(healed.headers ?? {}, request.headers, sent);
+    if (changes === null) return null;
+    for (const [name, value] of Object.entries(changes)) {
       if (value === null) headers.delete(name);
-      else if (typeof value === 'string') headers.set(name, value);
-      else return null;
+      else headers.set(name, value);
     }
-    const body = Object.hasOwn(healed, 'body') ? mergeBody(originalBody, healed.body) : originalBody;
+    const body = Object.hasOwn(healed, 'body') ? restoreBody(originalBody, sent, healed.body) : originalBody;
+    if (body === undefined) return null;
     // Never invent a replay of a binary or streamed upload when its original
     // data was not captured as a supported structured body.
     if (body === null && !bodyless.includes(request.method)) return null;

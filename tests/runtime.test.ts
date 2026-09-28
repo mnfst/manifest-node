@@ -11,8 +11,8 @@ test('repairs JSON, masks credentials, preserves withheld fields and reports act
   });
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { received: { limit: 100, apiKey: 'local-secret' } });
-  assert.deepEqual(r.captures[0]!.request.body, { limit: 500, obsolete: true });
-  assert.equal(r.captures[0]!.request.headers.authorization, 'REDACTED');
+  assert.deepEqual(r.captures[0]!.request.body, { limit: 500, apiKey: 'REDACTED', obsolete: true });
+  assert.equal(r.captures[0]!.request.headers.authorization, 'Bearer REDACTED');
   assert.ok(!r.captures[0]!.request.url.includes('hidden'));
   assert.equal(r.requests[1]!.headers.authorization, 'Bearer secret');
   assert.equal(r.requests[1]!.headers['idempotency-key'], 'same-key');

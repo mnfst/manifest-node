@@ -1,17 +1,4 @@
-const secretNames = new Set(['api_key', 'apikey', 'api_token', 'key', 'token', 'access_token',
-  'refresh_token', 'auth', 'authorization', 'signature', 'sig', 'secret', 'client_secret',
-  'password', 'session', 'session_id', 'bearer', 'jwt', 'id_token', 'auth_token', 'pwd', 'passwd', 'private_key']);
-const roots = ['auth', 'key', 'token', 'secret', 'session', 'password', 'passwd', 'cookie', 'signature', 'credential', 'bearer', 'jwt'];
-const normalize = (name: string) => name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replaceAll('-', '_').toLowerCase().replace(/^x_/, '');
-export const isSecret = (name: string) => secretNames.has(normalize(name));
 export const isObject = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
-export function safeUrl(raw: string): string {
-  const url = new URL(raw);
-  url.username = ''; url.password = ''; url.hash = '';
-  const pairs = [...url.searchParams].map(([key, value]) => [key, isSecret(key) ? 'REDACTED' : value]);
-  url.search = new URLSearchParams(pairs as [string, string][]).toString();
-  return url.toString();
-}
 /**
  * The URL a tracked call is reported under: scheme, host, port and path only.
  * The query, fragment and userinfo are where credentials ride, so they never
@@ -24,17 +11,6 @@ export function trackedUrl(raw: string): string | null {
     url.username = ''; url.password = ''; url.search = ''; url.hash = '';
     return url.toString();
   } catch { return null; }
-}
-export function safeHeaders(headers: Headers): Record<string, string> {
-  return Object.fromEntries([...headers].map(([key, value]) => [key,
-    isSecret(key) || roots.some(root => normalize(key).includes(root)) ? 'REDACTED' : value.slice(0, 1024)]));
-}
-export function travelingBody(body: unknown): unknown {
-  return isObject(body) ? Object.fromEntries(Object.entries(body).filter(([key]) => !isSecret(key))) : body;
-}
-export function mergeBody(original: unknown, healed: unknown): unknown {
-  if (!isObject(original) || !isObject(healed)) return healed;
-  return { ...Object.fromEntries(Object.entries(original).filter(([key]) => isSecret(key) && !Object.hasOwn(healed, key))), ...healed };
 }
 export function boundedJson(value: unknown): boolean {
   const stack: [unknown, number][] = [[value, 0]];
